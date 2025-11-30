@@ -28,7 +28,7 @@ Aeronir is a web-based tool for labeling satellite/aerial imagery tiles with bou
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/aeronir.git
+git clone https://github.com/Celpear/Aeronir.git
 cd aeronir
 
 # Install dependencies
