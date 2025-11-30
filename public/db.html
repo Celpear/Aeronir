@@ -22,7 +22,9 @@
             <a href="/view" class="toplink">Gallery</a>
             <a href="/export" class="toplink">YOLO Export</a>
             <a href="/db" class="toplink active">Database</a>
+            <a href="/admin" class="toplink" id="admin-link" style="display:none">Users</a>
         </nav>
+        <div id="user-info" class="user-info"></div>
     </div>
 
     <div id="db-container">
@@ -42,6 +44,7 @@
         <pre id="db-content">Loading...</pre>
     </div>
 
+    <script src="/auth.js"></script>
     <script src="/db.js"></script>
 </body>
 
