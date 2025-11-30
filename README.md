@@ -4,6 +4,8 @@
 
 Aeronir is a web-based tool for labeling satellite/aerial imagery tiles with bounding boxes. It exports annotations in YOLO format, ready for training object detection models like YOLOv5/v8.
 
+![Aeronir Screenshot](https://raw.githubusercontent.com/Celpear/Aeronir/main/images/aeronir_screenshot.png)
+
 ![Aeronir Screenshot](https://img.shields.io/badge/status-active-success.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D18-green.svg)
