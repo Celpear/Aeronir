@@ -22,7 +22,9 @@
             <a href="/view" class="toplink">Gallery</a>
             <a href="/export" class="toplink active">YOLO Export</a>
             <a href="/db" class="toplink">Database</a>
+            <a href="/admin" class="toplink" id="admin-link" style="display:none">Users</a>
         </nav>
+        <div id="user-info" class="user-info"></div>
     </div>
 
     <div id="export-container">
@@ -88,6 +90,7 @@ dataset/
         </div>
     </div>
 
+    <script src="/auth.js"></script>
     <script src="/export.js"></script>
 </body>
 

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Setup Admin - Aeronir</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <span class="logo-icon">🛰️</span>
+                <h1>Aeronir Setup</h1>
+                <p>Create the first admin account</p>
+            </div>
+            
+            <div class="setup-info">
+                <p>👋 Welcome! This is the first time you're running Aeronir.</p>
+                <p>Create an admin account to get started. This account will have full access to manage users and data.</p>
+            </div>
+            
+            <form id="setup-form" class="auth-form">
+                <div class="form-group">
+                    <label for="email">Admin Email</label>
+                    <input type="email" id="email" name="email" required placeholder="admin@example.com" />
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required minlength="6" placeholder="Min. 6 characters" />
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirm-password">Confirm Password</label>
+                    <input type="password" id="confirm-password" name="confirm-password" required placeholder="••••••••" />
+                </div>
+                
+                <button type="submit" class="auth-btn">Create Admin Account</button>
+                
+                <p id="error-msg" class="error-msg"></p>
+            </form>
+        </div>
+    </div>
+    
+    <script src="/auth.js"></script>
+    <script>
+        // Check if setup is actually needed
+        (async () => {
+            const needsSetup = await checkNeedsSetup();
+            if (!needsSetup) {
+                window.location.href = '/login';
+            }
+        })();
+        
+        document.getElementById('setup-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            const errorMsg = document.getElementById('error-msg');
+            
+            if (password !== confirmPassword) {
+                errorMsg.textContent = 'Passwords do not match';
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/auth/setup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok) {
+                    window.location.href = '/';
+                } else {
+                    errorMsg.textContent = data.error || 'Setup failed';
+                }
+            } catch (err) {
+                errorMsg.textContent = 'Connection error';
+            }
+        });
+    </script>
+</body>
+</html>
+

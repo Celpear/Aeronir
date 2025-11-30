@@ -489,6 +489,18 @@ function initUI() {
 }
 
 async function init() {
+    // Check authentication
+    const auth = await requireAuth();
+    if (!auth) return;
+    
+    // Update UI with user info
+    updateUserUI(auth.user);
+    
+    // Show admin link if admin
+    if (auth.user.role === 'admin') {
+        document.getElementById('admin-link').style.display = '';
+    }
+    
     initUI();
     initMap();
     await loadLabels();

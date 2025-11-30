@@ -4,39 +4,310 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
 import sharp from 'sharp';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import cookieParser from 'cookie-parser';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Ordner für gespeicherte Tiles
+// JWT Secret (in production, use environment variable)
+const JWT_SECRET = process.env.JWT_SECRET || 'aeronir-secret-key-change-in-production';
+const JWT_EXPIRES = '7d';
+
+// Folder for saved tiles
 const TILES_DIR = path.join(__dirname, 'public', 'saved_tiles');
 
-// Standard Tile-Server URL (kann per Request überschrieben werden)
+// Default Tile-Server URL
 const DEFAULT_TILE_URL = 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg';
 
-// --- lowdb initialisieren mit Default-Daten ---
+// --- Initialize lowdb with default data ---
 const defaultData = {
-    labels: [],     // { id, name }
-    boxes: [],      // { id, labelId, labelName, bounds, tiles[], image, yolo, createdAt }
-    tileSize: 256   // Standard Tile-Größe
+    users: [],      // { id, email, password (hashed), role: 'admin' | 'user', createdAt }
+    labels: [],     // { id, name, userId }
+    boxes: [],      // { id, labelId, labelName, bounds, tiles[], image, yolo, userId, createdAt }
+    tileSize: 256
 };
 
 const db = await JSONFilePreset(path.join(__dirname, 'db.json'), defaultData);
 
-// Stelle sicher, dass der Tiles-Ordner existiert
+// Ensure users array exists (for migration)
+await db.read();
+if (!db.data.users) {
+    db.data.users = [];
+    await db.write();
+}
+
+// Ensure tiles folder exists
 await fs.mkdir(TILES_DIR, { recursive: true });
 
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
 
-// Static Files aus /public
-app.use(express.static(path.join(__dirname, 'public')));
+// --- Authentication Middleware ---
 
-// --- Hilfsfunktionen für Tile-Berechnungen ---
+function authenticateToken(req, res, next) {
+    const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+        return res.status(401).json({ error: 'Authentication required' });
+    }
+    
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (err) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+}
 
-/**
- * Konvertiert Lat/Lng zu Tile-Koordinaten bei gegebenem Zoom-Level
- */
+function requireAdmin(req, res, next) {
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Admin access required' });
+    }
+    next();
+}
+
+// Check if setup is needed (no admin exists)
+async function needsSetup() {
+    await db.read();
+    return !db.data.users.some(u => u.role === 'admin');
+}
+
+// --- Auth API Routes ---
+
+// Check if setup is needed
+app.get('/api/auth/needs-setup', async (req, res) => {
+    res.json({ needsSetup: await needsSetup() });
+});
+
+// Setup first admin account
+app.post('/api/auth/setup', async (req, res) => {
+    const { email, password } = req.body;
+    
+    if (!await needsSetup()) {
+        return res.status(400).json({ error: 'Setup already completed' });
+    }
+    
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password required' });
+    }
+    
+    if (password.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+    
+    await db.read();
+    
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = {
+        id: 1,
+        email: email.toLowerCase().trim(),
+        password: hashedPassword,
+        role: 'admin',
+        createdAt: new Date().toISOString()
+    };
+    
+    db.data.users.push(newUser);
+    await db.write();
+    
+    // Generate token
+    const token = jwt.sign(
+        { id: newUser.id, email: newUser.email, role: newUser.role },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRES }
+    );
+    
+    res.cookie('token', token, { 
+        httpOnly: true, 
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        sameSite: 'lax'
+    });
+    
+    res.status(201).json({ 
+        message: 'Admin account created',
+        user: { id: newUser.id, email: newUser.email, role: newUser.role }
+    });
+});
+
+// Register new user
+app.post('/api/auth/register', async (req, res) => {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password required' });
+    }
+    
+    if (password.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+    
+    await db.read();
+    
+    // Check if email already exists
+    if (db.data.users.find(u => u.email === email.toLowerCase().trim())) {
+        return res.status(400).json({ error: 'Email already registered' });
+    }
+    
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = {
+        id: db.data.users.length ? Math.max(...db.data.users.map(u => u.id)) + 1 : 1,
+        email: email.toLowerCase().trim(),
+        password: hashedPassword,
+        role: 'user',
+        createdAt: new Date().toISOString()
+    };
+    
+    db.data.users.push(newUser);
+    await db.write();
+    
+    // Generate token
+    const token = jwt.sign(
+        { id: newUser.id, email: newUser.email, role: newUser.role },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRES }
+    );
+    
+    res.cookie('token', token, { 
+        httpOnly: true, 
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        sameSite: 'lax'
+    });
+    
+    res.status(201).json({ 
+        message: 'Account created',
+        user: { id: newUser.id, email: newUser.email, role: newUser.role }
+    });
+});
+
+// Login
+app.post('/api/auth/login', async (req, res) => {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password required' });
+    }
+    
+    await db.read();
+    
+    const user = db.data.users.find(u => u.email === email.toLowerCase().trim());
+    if (!user) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    // Generate token
+    const token = jwt.sign(
+        { id: user.id, email: user.email, role: user.role },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRES }
+    );
+    
+    res.cookie('token', token, { 
+        httpOnly: true, 
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        sameSite: 'lax'
+    });
+    
+    res.json({ 
+        message: 'Login successful',
+        user: { id: user.id, email: user.email, role: user.role }
+    });
+});
+
+// Logout
+app.post('/api/auth/logout', (req, res) => {
+    res.clearCookie('token');
+    res.json({ message: 'Logged out' });
+});
+
+// Get current user
+app.get('/api/auth/me', authenticateToken, (req, res) => {
+    res.json({ user: req.user });
+});
+
+// --- Admin User Management API ---
+
+// Get all users (admin only)
+app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
+    await db.read();
+    const users = db.data.users.map(u => ({
+        id: u.id,
+        email: u.email,
+        role: u.role,
+        createdAt: u.createdAt
+    }));
+    res.json(users);
+});
+
+// Update user role (admin only)
+app.put('/api/admin/users/:id/role', authenticateToken, requireAdmin, async (req, res) => {
+    const userId = Number(req.params.id);
+    const { role } = req.body;
+    
+    if (!['admin', 'user'].includes(role)) {
+        return res.status(400).json({ error: 'Invalid role' });
+    }
+    
+    // Prevent removing last admin
+    await db.read();
+    const user = db.data.users.find(u => u.id === userId);
+    if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+    }
+    
+    if (user.role === 'admin' && role === 'user') {
+        const adminCount = db.data.users.filter(u => u.role === 'admin').length;
+        if (adminCount <= 1) {
+            return res.status(400).json({ error: 'Cannot remove the last admin' });
+        }
+    }
+    
+    user.role = role;
+    await db.write();
+    
+    res.json({ message: 'Role updated', user: { id: user.id, email: user.email, role: user.role } });
+});
+
+// Delete user (admin only)
+app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+    const userId = Number(req.params.id);
+    
+    // Prevent self-deletion
+    if (req.user.id === userId) {
+        return res.status(400).json({ error: 'Cannot delete your own account' });
+    }
+    
+    await db.read();
+    
+    const userIndex = db.data.users.findIndex(u => u.id === userId);
+    if (userIndex === -1) {
+        return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Prevent removing last admin
+    const user = db.data.users[userIndex];
+    if (user.role === 'admin') {
+        const adminCount = db.data.users.filter(u => u.role === 'admin').length;
+        if (adminCount <= 1) {
+            return res.status(400).json({ error: 'Cannot delete the last admin' });
+        }
+    }
+    
+    db.data.users.splice(userIndex, 1);
+    await db.write();
+    
+    res.json({ message: 'User deleted' });
+});
+
+// --- Helper Functions for Tile Calculations ---
+
 function latLngToTile(lat, lng, zoom) {
     const n = Math.pow(2, zoom);
     const x = Math.floor((lng + 180) / 360 * n);
@@ -45,9 +316,6 @@ function latLngToTile(lat, lng, zoom) {
     return { x, y, z: zoom };
 }
 
-/**
- * Berechnet die globale Pixel-Position für Lat/Lng
- */
 function latLngToGlobalPixel(lat, lng, zoom, tileSize = 256) {
     const n = Math.pow(2, zoom);
     const globalX = (lng + 180) / 360 * n * tileSize;
@@ -56,17 +324,11 @@ function latLngToGlobalPixel(lat, lng, zoom, tileSize = 256) {
     return { globalX, globalY };
 }
 
-/**
- * Berechnet alle betroffenen Tiles für eine Bounding Box
- */
 function getTilesForBounds(bounds, zoom) {
     const swTile = latLngToTile(bounds.south, bounds.west, zoom);
     const neTile = latLngToTile(bounds.north, bounds.east, zoom);
     
     const tiles = [];
-    
-    // Iteriere über alle Tiles in der Bounding Box
-    // Beachte: Y-Achse ist invertiert (Nord = kleiner Y)
     const minX = Math.min(swTile.x, neTile.x);
     const maxX = Math.max(swTile.x, neTile.x);
     const minY = Math.min(swTile.y, neTile.y);
@@ -78,20 +340,9 @@ function getTilesForBounds(bounds, zoom) {
         }
     }
     
-    return {
-        tiles,
-        gridWidth: maxX - minX + 1,
-        gridHeight: maxY - minY + 1,
-        minX,
-        minY,
-        maxX,
-        maxY
-    };
+    return { tiles, gridWidth: maxX - minX + 1, gridHeight: maxY - minY + 1, minX, minY, maxX, maxY };
 }
 
-/**
- * Lädt ein einzelnes Tile-Bild herunter
- */
 async function downloadTile(z, x, y, tileUrlTemplate = DEFAULT_TILE_URL) {
     const url = tileUrlTemplate
         .replace('{z}', z)
@@ -101,96 +352,58 @@ async function downloadTile(z, x, y, tileUrlTemplate = DEFAULT_TILE_URL) {
     
     try {
         const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const arrayBuffer = await response.arrayBuffer();
         return Buffer.from(arrayBuffer);
     } catch (err) {
-        console.error(`Fehler beim Laden von Tile ${z}/${x}/${y}:`, err.message);
-        // Erzeuge ein graues Platzhalter-Tile
+        console.error(`Error loading tile ${z}/${x}/${y}:`, err.message);
         return await sharp({
-            create: {
-                width: 256,
-                height: 256,
-                channels: 3,
-                background: { r: 50, g: 50, b: 60 }
-            }
+            create: { width: 256, height: 256, channels: 3, background: { r: 50, g: 50, b: 60 } }
         }).jpeg().toBuffer();
     }
 }
 
-/**
- * Erstellt ein zusammengesetztes Bild aus mehreren Tiles
- */
 async function createCompositeImage(tileGrid, tileSize = 256, tileUrl = DEFAULT_TILE_URL) {
     const { tiles, gridWidth, gridHeight, minX, minY } = tileGrid;
-    
     const compositeWidth = gridWidth * tileSize;
     const compositeHeight = gridHeight * tileSize;
     
-    // Lade alle Tiles parallel
     const tileBuffers = await Promise.all(
-        tiles.map(async (tile) => {
-            const buffer = await downloadTile(tile.z, tile.x, tile.y, tileUrl);
-            return {
-                ...tile,
-                buffer
-            };
-        })
+        tiles.map(async (tile) => ({
+            ...tile,
+            buffer: await downloadTile(tile.z, tile.x, tile.y, tileUrl)
+        }))
     );
     
-    // Erstelle Composite-Anweisungen für sharp
     const compositeInputs = tileBuffers.map(tile => ({
         input: tile.buffer,
         left: (tile.x - minX) * tileSize,
         top: (tile.y - minY) * tileSize
     }));
     
-    // Erstelle das zusammengesetzte Bild
     const compositeImage = await sharp({
-        create: {
-            width: compositeWidth,
-            height: compositeHeight,
-            channels: 3,
-            background: { r: 0, g: 0, b: 0 }
-        }
-    })
-    .composite(compositeInputs)
-    .jpeg({ quality: 90 })
-    .toBuffer();
+        create: { width: compositeWidth, height: compositeHeight, channels: 3, background: { r: 0, g: 0, b: 0 } }
+    }).composite(compositeInputs).jpeg({ quality: 90 }).toBuffer();
     
-    return {
-        buffer: compositeImage,
-        width: compositeWidth,
-        height: compositeHeight
-    };
+    return { buffer: compositeImage, width: compositeWidth, height: compositeHeight };
 }
 
-/**
- * Berechnet YOLO-Koordinaten für eine Box im zusammengesetzten Bild
- */
 function calculateYoloForComposite(bounds, tileGrid, zoom, tileSize = 256) {
     const { minX, minY, gridWidth, gridHeight } = tileGrid;
-    
     const compositeWidth = gridWidth * tileSize;
     const compositeHeight = gridHeight * tileSize;
     
-    // Berechne globale Pixel-Positionen
     const swPixel = latLngToGlobalPixel(bounds.south, bounds.west, zoom, tileSize);
     const nePixel = latLngToGlobalPixel(bounds.north, bounds.east, zoom, tileSize);
     
-    // Offset zum Composite-Bild (links oben ist minX, minY Tile)
     const offsetX = minX * tileSize;
     const offsetY = minY * tileSize;
     
-    // Box-Koordinaten im Composite
     const x1 = swPixel.globalX - offsetX;
     const x2 = nePixel.globalX - offsetX;
-    const y1 = nePixel.globalY - offsetY; // Nord = oben = kleinere Y
-    const y2 = swPixel.globalY - offsetY; // Süd = unten = größere Y
+    const y1 = nePixel.globalY - offsetY;
+    const y2 = swPixel.globalY - offsetY;
     
-    // YOLO-Format: x_center, y_center, width, height (normalisiert 0-1)
     const boxWidth = Math.abs(x2 - x1);
     const boxHeight = Math.abs(y2 - y1);
     const xCenter = (x1 + x2) / 2 / compositeWidth;
@@ -201,62 +414,54 @@ function calculateYoloForComposite(bounds, tileGrid, zoom, tileSize = 256) {
         y_center: Math.max(0, Math.min(1, yCenter)),
         width: Math.max(0, Math.min(1, boxWidth / compositeWidth)),
         height: Math.max(0, Math.min(1, boxHeight / compositeHeight)),
-        // Pixel-Koordinaten für Visualisierung
-        pixel: {
-            x1: Math.round(x1),
-            y1: Math.round(y1),
-            x2: Math.round(x2),
-            y2: Math.round(y2)
-        }
+        pixel: { x1: Math.round(x1), y1: Math.round(y1), x2: Math.round(x2), y2: Math.round(y2) }
     };
 }
 
-// --- API: Labels ---
+// --- Protected API Routes ---
 
-app.get('/api/labels', async (req, res) => {
+// Labels API
+app.get('/api/labels', authenticateToken, async (req, res) => {
     await db.read();
     res.json(db.data.labels);
 });
 
-app.post('/api/labels', async (req, res) => {
+app.post('/api/labels', authenticateToken, async (req, res) => {
     const { name } = req.body;
     if (!name || !name.trim()) {
-        return res.status(400).json({ error: 'Name ist erforderlich' });
+        return res.status(400).json({ error: 'Name is required' });
     }
 
     await db.read();
     const labels = db.data.labels;
 
-    // Falls Name schon existiert -> direkt zurückgeben
     const existing = labels.find((l) => l.name === name.trim());
     if (existing) return res.json(existing);
 
     const newLabel = {
         id: labels.length ? Math.max(...labels.map((l) => l.id)) + 1 : 1,
-        name: name.trim()
+        name: name.trim(),
+        userId: req.user.id
     };
     labels.push(newLabel);
     await db.write();
     res.status(201).json(newLabel);
 });
 
-app.delete('/api/labels/:id', async (req, res) => {
+app.delete('/api/labels/:id', authenticateToken, async (req, res) => {
     const id = Number(req.params.id);
     await db.read();
     
     const index = db.data.labels.findIndex(l => l.id === id);
     if (index === -1) {
-        return res.status(404).json({ error: 'Label nicht gefunden' });
+        return res.status(404).json({ error: 'Label not found' });
     }
     
-    // Lösche auch alle zugehörigen Bilder
     const boxesToDelete = db.data.boxes.filter(b => b.labelId === id);
     for (const box of boxesToDelete) {
         if (box.image) {
             const imagePath = path.join(__dirname, 'public', box.image);
-            try {
-                await fs.unlink(imagePath);
-            } catch (e) { /* ignore */ }
+            try { await fs.unlink(imagePath); } catch (e) { /* ignore */ }
         }
     }
     
@@ -267,18 +472,17 @@ app.delete('/api/labels/:id', async (req, res) => {
     res.json({ success: true });
 });
 
-// --- API: Boxen ---
-
-app.get('/api/boxes', async (req, res) => {
+// Boxes API
+app.get('/api/boxes', authenticateToken, async (req, res) => {
     await db.read();
     res.json(db.data.boxes);
 });
 
-app.post('/api/boxes', async (req, res) => {
+app.post('/api/boxes', authenticateToken, async (req, res) => {
     const { labelId, labelName, bounds, zoom, tileUrl } = req.body;
 
     if (!labelId || !labelName || !bounds) {
-        return res.status(400).json({ error: 'labelId, labelName und bounds sind erforderlich' });
+        return res.status(400).json({ error: 'labelId, labelName and bounds are required' });
     }
 
     await db.read();
@@ -287,37 +491,29 @@ app.post('/api/boxes', async (req, res) => {
     const tileSize = 256;
     const useTileUrl = tileUrl || DEFAULT_TILE_URL;
     
-    // Berechne betroffene Tiles
     const tileGrid = getTilesForBounds(bounds, zoomLevel);
     const { tiles, gridWidth, gridHeight } = tileGrid;
     
     const boxId = db.data.boxes.length ? Math.max(...db.data.boxes.map((b) => b.id)) + 1 : 1;
     
-    // Erstelle zusammengesetztes Bild
     console.log(`Box ${boxId}: ${tiles.length} Tile(s) (${gridWidth}x${gridHeight})`);
     
     let imageInfo;
     try {
         const composite = await createCompositeImage(tileGrid, tileSize, useTileUrl);
-        
-        // Speichere das Bild
         const imageName = `box_${boxId}_${Date.now()}.jpg`;
         const imagePath = path.join(TILES_DIR, imageName);
         await fs.writeFile(imagePath, composite.buffer);
-        
         imageInfo = {
             path: `/saved_tiles/${imageName}`,
             width: composite.width,
-            height: composite.height,
-            tileCount: tiles.length,
-            gridSize: `${gridWidth}x${gridHeight}`
+            height: composite.height
         };
     } catch (err) {
-        console.error('Fehler beim Erstellen des Composite-Bildes:', err);
+        console.error('Error creating composite image:', err);
         imageInfo = null;
     }
     
-    // Berechne YOLO-Koordinaten für das zusammengesetzte Bild
     const yoloCoords = calculateYoloForComposite(bounds, tileGrid, zoomLevel, tileSize);
 
     const newBox = {
@@ -328,15 +524,11 @@ app.post('/api/boxes', async (req, res) => {
         zoom: zoomLevel,
         tileUrl: useTileUrl,
         tiles: tiles.map(t => ({ x: t.x, y: t.y, z: t.z })),
-        tileGrid: {
-            width: gridWidth,
-            height: gridHeight,
-            minX: tileGrid.minX,
-            minY: tileGrid.minY
-        },
+        tileGrid: { width: gridWidth, height: gridHeight, minX: tileGrid.minX, minY: tileGrid.minY },
         image: imageInfo ? imageInfo.path : null,
         imageSize: imageInfo ? { width: imageInfo.width, height: imageInfo.height } : null,
         yolo: yoloCoords,
+        userId: req.user.id,
         createdAt: new Date().toISOString()
     };
     
@@ -345,22 +537,19 @@ app.post('/api/boxes', async (req, res) => {
     res.status(201).json(newBox);
 });
 
-app.delete('/api/boxes/:id', async (req, res) => {
+app.delete('/api/boxes/:id', authenticateToken, async (req, res) => {
     const id = Number(req.params.id);
     await db.read();
     
     const index = db.data.boxes.findIndex(b => b.id === id);
     if (index === -1) {
-        return res.status(404).json({ error: 'Box nicht gefunden' });
+        return res.status(404).json({ error: 'Box not found' });
     }
     
-    // Lösche das zugehörige Bild
     const box = db.data.boxes[index];
     if (box.image) {
         const imagePath = path.join(__dirname, 'public', box.image);
-        try {
-            await fs.unlink(imagePath);
-        } catch (e) { /* ignore */ }
+        try { await fs.unlink(imagePath); } catch (e) { /* ignore */ }
     }
     
     db.data.boxes.splice(index, 1);
@@ -369,20 +558,17 @@ app.delete('/api/boxes/:id', async (req, res) => {
     res.json({ success: true });
 });
 
-// --- API: YOLO Export ---
-
-app.get('/api/export/yolo', async (req, res) => {
+// YOLO Export API
+app.get('/api/export/yolo', authenticateToken, async (req, res) => {
     await db.read();
     
     const { boxes, labels } = db.data;
     
-    // Erstelle Label-Index-Map (YOLO nutzt numerische Klassen-IDs)
     const labelToClass = {};
     labels.forEach((label, index) => {
         labelToClass[label.id] = index;
     });
     
-    // Gruppiere Annotationen nach gespeichertem Bild
     const imageAnnotations = boxes
         .filter(box => box.image && box.yolo)
         .map(box => {
@@ -409,7 +595,6 @@ app.get('/api/export/yolo', async (req, res) => {
         })
         .filter(Boolean);
     
-    // Generiere classes.txt Inhalt
     const classesContent = labels.map(l => l.name).join('\n');
     
     res.json({
@@ -421,17 +606,19 @@ app.get('/api/export/yolo', async (req, res) => {
     });
 });
 
-// --- API: komplette DB-Ansicht (für /db.html) ---
-
-app.get('/api/db', async (req, res) => {
+// DB View API
+app.get('/api/db', authenticateToken, async (req, res) => {
     await db.read();
-    res.json(db.data);
+    // Don't expose passwords
+    const safeData = {
+        ...db.data,
+        users: db.data.users.map(u => ({ id: u.id, email: u.email, role: u.role, createdAt: u.createdAt }))
+    };
+    res.json(safeData);
 });
 
-// --- API: DB zurücksetzen ---
-
-app.delete('/api/db/reset', async (req, res) => {
-    // Lösche alle gespeicherten Bilder
+// Reset DB (admin only)
+app.delete('/api/db/reset', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const files = await fs.readdir(TILES_DIR);
         for (const file of files) {
@@ -439,17 +626,37 @@ app.delete('/api/db/reset', async (req, res) => {
         }
     } catch (e) { /* ignore */ }
     
+    // Keep users, reset only data
+    const users = db.data.users;
     db.data = {
+        users,
         labels: [],
         boxes: [],
         tileSize: 256
     };
     await db.write();
-    res.json({ success: true, message: 'Datenbank zurückgesetzt' });
+    res.json({ success: true, message: 'Database reset' });
 });
 
-// --- Routen für HTML-Seiten ---
+// --- Static Files (must be after API routes) ---
+app.use(express.static(path.join(__dirname, 'public')));
 
+// --- HTML Page Routes ---
+
+// Auth pages (public)
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+app.get('/register', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'register.html'));
+});
+
+app.get('/setup', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'setup.html'));
+});
+
+// Protected pages
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -464,6 +671,10 @@ app.get('/export', (req, res) => {
 
 app.get('/view', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'view.html'));
+});
+
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
 const PORT = 3000;

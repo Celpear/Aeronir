@@ -42,7 +42,16 @@ function showToast(message) {
     }, 2000);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Check authentication
+    const auth = await requireAuth();
+    if (!auth) return;
+    
+    updateUserUI(auth.user);
+    if (auth.user.role === 'admin') {
+        document.getElementById('admin-link').style.display = '';
+    }
+    
     loadDB();
 
     document.getElementById('refresh-btn').addEventListener('click', loadDB);
