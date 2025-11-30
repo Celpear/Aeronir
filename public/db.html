@@ -4,17 +4,23 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#14b8a6" />
     <title>Database - Aeronir</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
     <link rel="stylesheet" href="/styles.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
 </head>
 
 <body>
     <div id="topbar">
         <div class="logo">
-            <span class="logo-icon">🛰️</span>
+            <img src="/icons/icon-32.png" alt="Aeronir" class="logo-img" />
             <span class="logo-text">Aeronir</span>
         </div>
         <nav class="nav-links">
@@ -29,7 +35,7 @@
 
     <div id="db-container">
         <h1>📁 Database</h1>
-        
+
         <div class="db-actions">
             <button id="refresh-btn" class="export-btn">
                 <span class="btn-icon">🔄</span>
@@ -40,7 +46,7 @@
                 Reset Database
             </button>
         </div>
-        
+
         <pre id="db-content">Loading...</pre>
     </div>
 
