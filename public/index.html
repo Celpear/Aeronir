@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aeronir - Map Tile Annotation Tool</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="topbar">
+        <div class="logo">
+            <span class="logo-icon">🛰️</span>
+            <span class="logo-text">Aeronir</span>
+        </div>
+        <nav class="nav-links">
+            <a href="/" class="toplink active">Label</a>
+            <a href="/view" class="toplink">Gallery</a>
+            <a href="/export" class="toplink">YOLO Export</a>
+            <a href="/db" class="toplink">Database</a>
+        </nav>
+    </div>
+
+    <div id="layout">
+        <div id="sidebar">
+            <div class="sidebar-section">
+                <h2>🎯 Tools</h2>
+                <button id="toggle-draw" class="tool-btn">✏️ Draw OFF</button>
+                <p class="hint">
+                    Select a label, enable drawing and drag rectangles on the map.
+                </p>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="section-header">
+                    <h3>🏷️ Labels</h3>
+                </div>
+                
+                <div class="form-group">
+                    <label for="label-select">Active Label:</label>
+                    <select id="label-select">
+                        <option value="">-- please select --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="new-label-input">New Label:</label>
+                    <div class="input-row">
+                        <input id="new-label-input" type="text" placeholder="e.g. Building" />
+                        <button id="add-label-btn" class="icon-btn" title="Add">+</button>
+                    </div>
+                </div>
+
+                <div id="label-list" class="label-list"></div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>📊 Statistics</h3>
+                <div id="stats" class="stats-grid">
+                    <div class="stat">
+                        <span class="stat-value">0</span>
+                        <span class="stat-label">Boxes</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value">0</span>
+                        <span class="stat-label">Labels used</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>🗺️ Map Source</h3>
+                <div class="form-group">
+                    <label for="tile-preset">Preset:</label>
+                    <select id="tile-preset">
+                        <option value="sentinel">Sentinel-2 Cloudless (EOX)</option>
+                        <option value="osm">OpenStreetMap</option>
+                        <option value="esri">ESRI Satellite</option>
+                        <option value="custom">Custom URL...</option>
+                    </select>
+                </div>
+                <div class="form-group" id="custom-url-group" style="display: none;">
+                    <label for="custom-tile-url">Tile URL:</label>
+                    <input id="custom-tile-url" type="text" placeholder="https://.../{z}/{x}/{y}.png" />
+                    <button id="apply-tile-url" class="small-apply-btn">Apply</button>
+                </div>
+                <p class="hint tile-hint">
+                    Variables: {z}, {x}, {y}, {s}
+                </p>
+            </div>
+
+            <div class="sidebar-section zoom-info">
+                <span class="zoom-label">Zoom:</span>
+                <span id="current-zoom" class="zoom-value">0</span>
+            </div>
+        </div>
+
+        <div id="map"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="/app.js"></script>
+</body>
+
+</html>

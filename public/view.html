@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gallery - Aeronir</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="topbar">
+        <div class="logo">
+            <span class="logo-icon">🛰️</span>
+            <span class="logo-text">Aeronir</span>
+        </div>
+        <nav class="nav-links">
+            <a href="/" class="toplink">Label</a>
+            <a href="/view" class="toplink active">Gallery</a>
+            <a href="/export" class="toplink">YOLO Export</a>
+            <a href="/db" class="toplink">Database</a>
+        </nav>
+    </div>
+
+    <div id="view-container">
+        <div class="view-header">
+            <h1>🖼️ Tile Gallery</h1>
+            <p class="subtitle">All labeled tiles with bounding boxes</p>
+        </div>
+
+        <div class="view-controls">
+            <div class="control-group">
+                <label for="filter-label">Filter by label:</label>
+                <select id="filter-label">
+                    <option value="">All labels</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="tile-size">Display size:</label>
+                <input type="range" id="tile-size" min="150" max="600" value="300" step="50">
+                <span id="tile-size-value">300px</span>
+            </div>
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="show-labels" checked>
+                    Show labels
+                </label>
+            </div>
+        </div>
+
+        <div class="view-stats" id="view-stats">
+            <span class="stat-badge">
+                <strong id="tile-count">0</strong> Tiles
+            </span>
+            <span class="stat-badge">
+                <strong id="box-count">0</strong> Boxes
+            </span>
+        </div>
+
+        <div id="gallery" class="gallery-grid"></div>
+
+        <div id="no-data" class="no-data" style="display: none;">
+            <span class="no-data-icon">📭</span>
+            <p>No tiles labeled yet.</p>
+            <a href="/" class="link-btn">Start labeling →</a>
+        </div>
+    </div>
+
+    <!-- Lightbox for detail view -->
+    <div id="lightbox" class="lightbox">
+        <div class="lightbox-content">
+            <button class="lightbox-close" onclick="closeLightbox()">×</button>
+            <div class="lightbox-main">
+                <canvas id="lightbox-canvas"></canvas>
+            </div>
+            <div class="lightbox-info">
+                <h3 id="lightbox-title">Tile</h3>
+                <div id="lightbox-labels" class="lightbox-labels"></div>
+                <div id="lightbox-coords" class="lightbox-coords"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/view.js"></script>
+</body>
+
+</html>

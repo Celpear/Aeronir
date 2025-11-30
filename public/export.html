@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YOLO Export - Aeronir</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="topbar">
+        <div class="logo">
+            <span class="logo-icon">🛰️</span>
+            <span class="logo-text">Aeronir</span>
+        </div>
+        <nav class="nav-links">
+            <a href="/" class="toplink">Label</a>
+            <a href="/view" class="toplink">Gallery</a>
+            <a href="/export" class="toplink active">YOLO Export</a>
+            <a href="/db" class="toplink">Database</a>
+        </nav>
+    </div>
+
+    <div id="export-container">
+        <div class="export-header">
+            <h1>🎯 YOLO Dataset Export</h1>
+            <p class="subtitle">Export your dataset in standard YOLO format for YOLOv5/v8 training</p>
+        </div>
+
+        <div class="export-stats" id="export-stats">
+            <div class="stat-card">
+                <span class="stat-icon">🏷️</span>
+                <span class="stat-number" id="stat-classes">0</span>
+                <span class="stat-text">Classes</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon">🖼️</span>
+                <span class="stat-number" id="stat-tiles">0</span>
+                <span class="stat-text">Images</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon">📦</span>
+                <span class="stat-number" id="stat-boxes">0</span>
+                <span class="stat-text">Annotations</span>
+            </div>
+        </div>
+
+        <div class="dataset-structure">
+            <h3>📁 Dataset Structure</h3>
+            <pre class="structure-preview">
+dataset/
+├── train/
+│   ├── images/     # 80% of images
+│   └── labels/     # Annotations
+├── valid/
+│   ├── images/     # 15% of images
+│   └── labels/
+├── test/
+│   ├── images/     # 5% of images
+│   └── labels/
+├── data.yaml       # YOLO Config
+└── classes.txt</pre>
+        </div>
+
+        <div class="export-actions">
+            <button id="download-all" class="export-btn primary">
+                <span class="btn-icon">📥</span>
+                Download YOLO Dataset (ZIP)
+            </button>
+            <button id="copy-classes" class="export-btn">
+                <span class="btn-icon">📋</span>
+                Copy classes.txt
+            </button>
+        </div>
+
+        <div class="export-section">
+            <h2>📄 classes.txt</h2>
+            <pre id="classes-content" class="code-block"></pre>
+        </div>
+
+        <div class="export-section">
+            <h2>🖼️ Annotated Images</h2>
+            <div id="tiles-list" class="tiles-list"></div>
+        </div>
+    </div>
+
+    <script src="/export.js"></script>
+</body>
+
+</html>
