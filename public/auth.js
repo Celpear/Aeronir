@@ -1,10 +1,26 @@
 // Auth utility functions
 
+// Get stored auth token
+function getAuthToken() {
+    return localStorage.getItem('authToken');
+}
+
+// Store auth token
+function setAuthToken(token) {
+    if (token) {
+        localStorage.setItem('authToken', token);
+    } else {
+        localStorage.removeItem('authToken');
+    }
+}
+
 async function checkAuth() {
     try {
         const res = await fetch('/api/auth/me');
         if (res.ok) {
-            return await res.json();
+            const data = await res.json();
+            // Return user and token
+            return { user: data.user, token: getAuthToken() };
         }
         return null;
     } catch {
@@ -23,6 +39,7 @@ async function checkNeedsSetup() {
 }
 
 async function logout() {
+    setAuthToken(null);
     await fetch('/api/auth/logout', { method: 'POST' });
     window.location.href = '/login';
 }
@@ -34,13 +51,13 @@ async function requireAuth() {
         window.location.href = '/setup';
         return null;
     }
-    
+
     const auth = await checkAuth();
-    if (!auth) {
+    if (!auth || !auth.user) {
         window.location.href = '/login';
         return null;
     }
-    return auth;
+    return auth; // { user, token }
 }
 
 // Redirect to home if already authenticated
@@ -69,12 +86,12 @@ function updateUserUI(user) {
 function showToast(message, isError = false) {
     const existing = document.querySelector('.toast');
     if (existing) existing.remove();
-    
+
     const toast = document.createElement('div');
     toast.className = 'toast' + (isError ? ' error' : '');
     toast.textContent = message;
     document.body.appendChild(toast);
-    
+
     setTimeout(() => toast.classList.add('show'), 10);
     setTimeout(() => {
         toast.classList.remove('show');
