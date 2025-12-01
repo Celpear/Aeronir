@@ -3,6 +3,9 @@
 let socket = null;
 let onlineUsers = [];
 let authToken = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 10;
+const RECONNECT_DELAY = 3000;
 
 // Get token from cookie
 function getTokenFromCookie() {
@@ -13,37 +16,68 @@ function getTokenFromCookie() {
 // Initialize socket connection
 function initSocket(token) {
     if (socket && socket.connected) return socket;
-    
+
     authToken = token || getTokenFromCookie();
     if (!authToken) {
         console.warn('No auth token found for socket connection');
         return null;
     }
-    
+
     socket = io({
-        auth: { token: authToken }
+        auth: { token: authToken },
+        reconnection: true,
+        reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
+        reconnectionDelay: RECONNECT_DELAY,
+        reconnectionDelayMax: 10000,
+        timeout: 20000
     });
-    
+
     socket.on('connect', () => {
         console.log('🔌 Connected to server');
+        reconnectAttempts = 0;
         showToast('Connected to server', 'success');
     });
-    
-    socket.on('disconnect', () => {
-        console.log('🔌 Disconnected from server');
+
+    socket.on('disconnect', (reason) => {
+        console.log('🔌 Disconnected from server:', reason);
         showToast('Disconnected from server', 'warning');
+
+        // Manual reconnect for certain disconnect reasons
+        if (reason === 'io server disconnect' || reason === 'transport close') {
+            attemptReconnect();
+        }
     });
-    
+
+    socket.on('reconnect', (attemptNumber) => {
+        console.log('🔄 Reconnected after', attemptNumber, 'attempts');
+        showToast('Reconnected to server!', 'success');
+    });
+
+    socket.on('reconnect_attempt', (attemptNumber) => {
+        console.log('🔄 Reconnect attempt', attemptNumber);
+        reconnectAttempts = attemptNumber;
+    });
+
+    socket.on('reconnect_error', (err) => {
+        console.error('Reconnect error:', err.message);
+    });
+
+    socket.on('reconnect_failed', () => {
+        console.error('Failed to reconnect after', MAX_RECONNECT_ATTEMPTS, 'attempts');
+        showToast('Connection lost. Please refresh the page.', 'error');
+    });
+
     socket.on('connect_error', (err) => {
         console.error('Socket connection error:', err.message);
+        attemptReconnect();
     });
-    
+
     // Online users update
     socket.on('users:online', (users) => {
         onlineUsers = users;
         updateOnlineUsersUI();
     });
-    
+
     // Real-time events
     socket.on('label:created', (label) => {
         console.log('🏷️ Label created:', label);
@@ -52,7 +86,7 @@ function initSocket(token) {
         }
         showToast(`${label.userEmail} created label "${label.name}"`, 'info');
     });
-    
+
     socket.on('label:deleted', (data) => {
         console.log('🗑️ Label deleted:', data);
         if (typeof handleLabelDeleted === 'function') {
@@ -60,7 +94,7 @@ function initSocket(token) {
         }
         showToast(`${data.deletedBy} deleted a label`, 'info');
     });
-    
+
     socket.on('box:created', (box) => {
         console.log('📦 Box created:', box);
         if (typeof handleBoxCreated === 'function') {
@@ -68,7 +102,7 @@ function initSocket(token) {
         }
         showToast(`${box.userEmail} added a box`, 'info');
     });
-    
+
     socket.on('box:deleted', (data) => {
         console.log('🗑️ Box deleted:', data);
         if (typeof handleBoxDeleted === 'function') {
@@ -78,21 +112,21 @@ function initSocket(token) {
             showToast(`${data.deletedBy} deleted a box`, 'info');
         }
     });
-    
+
     socket.on('db:reset', (data) => {
         console.log('💥 Database reset by:', data.resetBy);
         showToast(`Database reset by ${data.resetBy}!`, 'warning');
         // Reload page after reset
         setTimeout(() => location.reload(), 2000);
     });
-    
+
     // Cursor updates from other users
     socket.on('cursor:update', (data) => {
         if (typeof handleCursorUpdate === 'function') {
             handleCursorUpdate(data);
         }
     });
-    
+
     return socket;
 }
 
@@ -107,17 +141,17 @@ function sendCursorPosition(lat, lng) {
 function updateOnlineUsersUI() {
     const container = document.getElementById('online-users');
     if (!container) return;
-    
+
     container.innerHTML = '';
-    
+
     // Count unique users
     const uniqueUsers = [...new Map(onlineUsers.map(u => [u.id, u])).values()];
-    
+
     const countBadge = document.createElement('span');
     countBadge.className = 'online-count';
     countBadge.innerHTML = `<span class="pulse-dot"></span> ${uniqueUsers.length} online`;
     container.appendChild(countBadge);
-    
+
     uniqueUsers.forEach(user => {
         const userBadge = document.createElement('span');
         userBadge.className = 'online-user';
@@ -146,16 +180,16 @@ function showToast(message, type = 'info') {
         container.id = 'toast-container';
         document.body.appendChild(container);
     }
-    
+
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     toast.textContent = message;
-    
+
     container.appendChild(toast);
-    
+
     // Trigger animation
     setTimeout(() => toast.classList.add('show'), 10);
-    
+
     // Remove after 4 seconds
     setTimeout(() => {
         toast.classList.remove('show');
@@ -163,10 +197,46 @@ function showToast(message, type = 'info') {
     }, 4000);
 }
 
+// Attempt manual reconnect
+function attemptReconnect() {
+    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        showToast('Connection lost. Please refresh the page.', 'error');
+        return;
+    }
+
+    if (socket && !socket.connected) {
+        reconnectAttempts++;
+        console.log('🔄 Manual reconnect attempt', reconnectAttempts);
+
+        setTimeout(() => {
+            if (socket && !socket.connected) {
+                socket.connect();
+            }
+        }, RECONNECT_DELAY);
+    }
+}
+
+// Check connection status
+function isConnected() {
+    return socket && socket.connected;
+}
+
+// Force reconnect
+function forceReconnect() {
+    if (socket) {
+        socket.disconnect();
+        reconnectAttempts = 0;
+        socket.connect();
+    }
+}
+
 // Export functions
 window.initSocket = initSocket;
 window.sendCursorPosition = sendCursorPosition;
 window.showToast = showToast;
 window.getOnlineUsers = () => onlineUsers;
+window.isSocketConnected = isConnected;
+window.forceReconnect = forceReconnect;
+
 
 

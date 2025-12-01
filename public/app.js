@@ -7,6 +7,7 @@ let currentLabelName = null;
 // For drawing
 let startLatLng = null;
 let tempRect = null;
+let lastTouchLatLng = null; // Store last touch position for touchend
 
 // Saved boxes with their Leaflet objects
 const rectangles = new Map(); // boxId -> { rect, data }
@@ -274,20 +275,33 @@ function applyTilePreset(preset) {
 
 function updateDrawButtonText() {
     const btn = document.getElementById('toggle-draw');
+    const mapEl = document.getElementById('map');
+
     if (drawEnabled) {
         btn.textContent = '✏️ Draw ON';
         btn.classList.add('active');
+        mapEl.classList.add('drawing-mode');
         if (map) {
             map.dragging.disable();
+            map.touchZoom.disable();
+            map.doubleClickZoom.disable();
         }
-        document.getElementById('map').style.cursor = 'crosshair';
+        mapEl.style.cursor = 'crosshair';
+
+        // Show hint on touch devices
+        if ('ontouchstart' in window && typeof showToast === 'function') {
+            showToast('Touch & drag to draw a box', 'info');
+        }
     } else {
         btn.textContent = '✏️ Draw OFF';
         btn.classList.remove('active');
+        mapEl.classList.remove('drawing-mode');
         if (map) {
             map.dragging.enable();
+            map.touchZoom.enable();
+            map.doubleClickZoom.enable();
         }
-        document.getElementById('map').style.cursor = '';
+        mapEl.style.cursor = '';
     }
 }
 
@@ -355,70 +369,187 @@ function initMap() {
 
     map.on('mouseup', async (e) => {
         if (!startLatLng || !tempRect) return;
-
-        const finalBounds = L.latLngBounds(startLatLng, e.latlng);
-        const sw = finalBounds.getSouthWest();
-        const ne = finalBounds.getNorthEast();
-
-        // Only if box has actual area
-        if (Math.abs(sw.lat - ne.lat) < 1e-6 || Math.abs(sw.lng - ne.lng) < 1e-6) {
-            map.removeLayer(tempRect);
-            tempRect = null;
-            startLatLng = null;
-            return;
-        }
-
-        const currentZoom = map.getZoom();
-
-        const payload = {
-            labelId: currentLabelId,
-            labelName: currentLabelName,
-            bounds: {
-                south: sw.lat,
-                west: sw.lng,
-                north: ne.lat,
-                east: ne.lng
-            },
-            zoom: currentZoom,
-            tileUrl: currentTileUrl
-        };
-
-        try {
-            const saved = await fetchJSON('/api/boxes', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            // Convert temporary rectangle to permanent one
-            map.removeLayer(tempRect);
-
-            const rect = L.rectangle([sw, ne], {
-                color: getLabelColor(currentLabelId),
-                weight: 2,
-                fillOpacity: 0.2
-            }).addTo(map);
-
-            const popupContent = createPopupContent(saved);
-            rect.bindPopup(popupContent);
-
-            rectangles.set(saved.id, { rect, data: saved });
-            updateStats();
-
-            // Reset for next drawing
-            tempRect = null;
-            startLatLng = null;
-        } catch (err) {
-            console.error(err);
-            alert('Error saving box');
-            map.removeLayer(tempRect);
-            tempRect = null;
-            startLatLng = null;
-        }
+        await finishDrawing(e.latlng);
     });
+
+    // --- Touch events for mobile ---
+    const mapContainer = document.getElementById('map');
+
+    mapContainer.addEventListener('touchstart', (e) => {
+        if (!drawEnabled || !currentLabelId) return;
+        if (e.touches.length !== 1) return; // Only single touch
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const touch = e.touches[0];
+        const rect = mapContainer.getBoundingClientRect();
+        const containerPoint = L.point(
+            touch.clientX - rect.left,
+            touch.clientY - rect.top
+        );
+        startLatLng = map.containerPointToLatLng(containerPoint);
+        lastTouchLatLng = startLatLng; // Initialize last position
+
+        tempRect = L.rectangle([startLatLng, startLatLng], {
+            color: getLabelColor(currentLabelId),
+            weight: 2,
+            dashArray: '5, 5',
+            fillOpacity: 0.3
+        }).addTo(map);
+    }, { passive: false });
+
+    mapContainer.addEventListener('touchmove', (e) => {
+        if (!startLatLng || !tempRect) return;
+        if (e.touches.length !== 1) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const touch = e.touches[0];
+        const rect = mapContainer.getBoundingClientRect();
+        const containerPoint = L.point(
+            touch.clientX - rect.left,
+            touch.clientY - rect.top
+        );
+        const latlng = map.containerPointToLatLng(containerPoint);
+        lastTouchLatLng = latlng; // Store last position
+
+        const bounds = L.latLngBounds(startLatLng, latlng);
+        tempRect.setBounds(bounds);
+    }, { passive: false });
+
+    mapContainer.addEventListener('touchend', async (e) => {
+        if (!startLatLng || !tempRect) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Use changedTouches for the final position, or fall back to last known position
+        let endLatLng = lastTouchLatLng;
+
+        if (e.changedTouches && e.changedTouches.length > 0) {
+            const touch = e.changedTouches[0];
+            const rect = mapContainer.getBoundingClientRect();
+            const containerPoint = L.point(
+                touch.clientX - rect.left,
+                touch.clientY - rect.top
+            );
+            endLatLng = map.containerPointToLatLng(containerPoint);
+        }
+
+        if (endLatLng) {
+            await finishDrawing(endLatLng);
+        } else {
+            // Cleanup if no valid end position
+            if (tempRect) {
+                map.removeLayer(tempRect);
+                tempRect = null;
+            }
+            startLatLng = null;
+        }
+
+        lastTouchLatLng = null;
+    }, { passive: false });
+
+    // Also handle touchcancel
+    mapContainer.addEventListener('touchcancel', (e) => {
+        if (tempRect) {
+            map.removeLayer(tempRect);
+            tempRect = null;
+        }
+        startLatLng = null;
+        lastTouchLatLng = null;
+    }, { passive: false });
 
     // Load all existing boxes on startup
     loadExistingBoxes();
+}
+
+// Helper function to complete drawing (shared by mouse and touch)
+async function finishDrawing(endLatLng) {
+    if (!startLatLng || !endLatLng) {
+        cleanup();
+        return;
+    }
+
+    const finalBounds = L.latLngBounds(startLatLng, endLatLng);
+    const sw = finalBounds.getSouthWest();
+    const ne = finalBounds.getNorthEast();
+
+    // Only if box has actual area (minimum size check)
+    const minSize = 1e-5; // Slightly larger threshold for touch
+    if (Math.abs(sw.lat - ne.lat) < minSize || Math.abs(sw.lng - ne.lng) < minSize) {
+        console.log('Box too small, ignoring');
+        cleanup();
+        return;
+    }
+
+    const currentZoom = map.getZoom();
+
+    const payload = {
+        labelId: currentLabelId,
+        labelName: currentLabelName,
+        bounds: {
+            south: sw.lat,
+            west: sw.lng,
+            north: ne.lat,
+            east: ne.lng
+        },
+        zoom: currentZoom,
+        tileUrl: currentTileUrl
+    };
+
+    try {
+        const saved = await fetchJSON('/api/boxes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        // Convert temporary rectangle to permanent one
+        if (tempRect) {
+            map.removeLayer(tempRect);
+        }
+
+        const rect = L.rectangle([sw, ne], {
+            color: getLabelColor(currentLabelId),
+            weight: 2,
+            fillOpacity: 0.2
+        }).addTo(map);
+
+        const popupContent = createPopupContent(saved);
+        rect.bindPopup(popupContent);
+
+        rectangles.set(saved.id, { rect, data: saved });
+        updateStats();
+
+        // Show success feedback on mobile
+        if ('ontouchstart' in window && typeof showToast === 'function') {
+            showToast('Box saved!', 'success');
+        }
+
+        // Reset for next drawing
+        cleanup();
+    } catch (err) {
+        console.error('Error saving box:', err);
+        if (typeof showToast === 'function') {
+            showToast('Error saving box', 'error');
+        } else {
+            alert('Error saving box');
+        }
+        cleanup();
+    }
+}
+
+// Cleanup drawing state
+function cleanup() {
+    if (tempRect && map) {
+        map.removeLayer(tempRect);
+    }
+    tempRect = null;
+    startLatLng = null;
+    lastTouchLatLng = null;
 }
 
 function updateZoomDisplay() {
