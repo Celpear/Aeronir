@@ -401,6 +401,9 @@ function initMap() {
     const mapContainer = document.getElementById('map');
 
     mapContainer.addEventListener('touchstart', (e) => {
+        // Don't intercept touches on map controls (buttons, etc.)
+        if (e.target.closest('#map-controls')) return;
+        
         if (!drawEnabled || !currentLabelId) return;
         if (e.touches.length !== 1) return; // Only single touch
 
@@ -425,6 +428,9 @@ function initMap() {
     }, { passive: false });
 
     mapContainer.addEventListener('touchmove', (e) => {
+        // Don't intercept touches on map controls
+        if (e.target.closest('#map-controls')) return;
+        
         if (!startLatLng || !tempRect) return;
         if (e.touches.length !== 1) return;
 
@@ -445,6 +451,9 @@ function initMap() {
     }, { passive: false });
 
     mapContainer.addEventListener('touchend', async (e) => {
+        // Don't intercept touches on map controls
+        if (e.target.closest('#map-controls')) return;
+        
         if (!startLatLng || !tempRect) return;
 
         e.preventDefault();
