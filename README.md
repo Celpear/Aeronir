@@ -34,22 +34,6 @@ Aeronir is a web-based tool for labeling satellite/aerial imagery tiles with bou
 
 ### Installation
 
-#### Option 1: Docker (Recommended)
-
-```bash
-# Clone the repository
-git clone https://github.com/Celpear/Aeronir.git
-cd Aeronir
-
-# Start with Docker Compose
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-```
-
-#### Option 2: Manual Installation
-
 ```bash
 # Clone the repository
 git clone https://github.com/Celpear/Aeronir.git
@@ -206,10 +190,7 @@ aeronir/
 │   └── saved_tiles/    # Downloaded tile images
 ├── server.js           # Express + Socket.io server
 ├── db.json             # Database file (gitignored)
-├── package.json
-├── Dockerfile          # Docker image definition
-├── docker-compose.yml  # Docker Compose config
-└── .dockerignore       # Docker build exclusions
+└── package.json
 ```
 
 ## 🔧 API Endpoints
@@ -268,53 +249,12 @@ The WebSocket client includes automatic reconnection:
 - Visual toast notifications for connection status
 - Manual reconnect available via `forceReconnect()`
 
-## 🐳 Docker
-
-### Docker Compose
-
-```bash
-# Start the container
-docker-compose up -d
-
-# Stop the container
-docker-compose down
-
-# Rebuild after changes
-docker-compose up -d --build
-
-# View logs
-docker-compose logs -f aeronir
-```
-
-### Docker Build (Manual)
-
-```bash
-# Build the image
-docker build -t aeronir .
-
-# Run the container
-docker run -d \
-  -p 3000:3000 \
-  -v $(pwd)/db.json:/app/db.json \
-  -v $(pwd)/public/saved_tiles:/app/public/saved_tiles \
-  -e JWT_SECRET=your-secret-key \
-  --name aeronir \
-  aeronir
-```
-
-### Persistent Data
-
-The following data is persisted via Docker volumes:
-- `db.json` - Database (users, labels, boxes)
-- `public/saved_tiles/` - Downloaded tile images
-
 ## 🌐 Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `NODE_ENV` | development | Environment mode |
 | `PORT` | 3000 | Server port |
-| `JWT_SECRET` | (auto-generated) | JWT signing secret (set in production!) |
+| `JWT_SECRET` | (auto-generated) | JWT signing secret |
 
 ## 📝 License
 
