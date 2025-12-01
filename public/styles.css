@@ -386,6 +386,63 @@ body {
     min-height: 0;
     min-width: 0;
     background: var(--bg-dark);
+    position: relative;
+}
+
+/* Touch drawing mode - prevent browser gestures */
+#map.drawing-mode {
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* Visual indicator for drawing mode */
+#map.drawing-mode::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 3px solid var(--accent-primary);
+    pointer-events: none;
+    z-index: 1000;
+    animation: pulse-border 2s ease-in-out infinite;
+}
+
+@keyframes pulse-border {
+
+    0%,
+    100% {
+        border-color: var(--accent-primary);
+        opacity: 0.8;
+    }
+
+    50% {
+        border-color: var(--accent-secondary);
+        opacity: 1;
+    }
+}
+
+/* Mobile draw hint */
+.draw-hint {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    padding: 10px 20px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    z-index: 1001;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--accent-primary);
+    display: none;
+}
+
+#map.drawing-mode .draw-hint {
+    display: block;
 }
 
 /* === Leaflet Dark Theme === */
