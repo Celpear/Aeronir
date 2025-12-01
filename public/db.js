@@ -67,21 +67,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     const auth = await requireAuth();
     if (!auth) return;
 
+    // Only admins can access this page
+    if (auth.user.role !== 'admin') {
+        alert('Access denied. Admin privileges required.');
+        window.location.href = '/';
+        return;
+    }
+
     updateUserUI(auth.user);
 
-    const resetBtn = document.getElementById('reset-btn');
-
-    if (auth.user.role === 'admin') {
-        document.getElementById('admin-link').style.display = '';
-        resetBtn.style.display = '';
-    } else {
-        // Hide reset button for non-admins
-        resetBtn.style.display = 'none';
-    }
+    document.getElementById('admin-link').style.display = '';
 
     loadDB();
 
     document.getElementById('refresh-btn').addEventListener('click', loadDB);
-    resetBtn.addEventListener('click', resetDB);
+    document.getElementById('reset-btn').addEventListener('click', resetDB);
 });
 

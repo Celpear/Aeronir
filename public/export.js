@@ -327,6 +327,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateUserUI(auth.user);
     if (auth.user.role === 'admin') {
         document.getElementById('admin-link').style.display = '';
+        document.getElementById('db-link').style.display = '';
     }
     
     loadExportData();
