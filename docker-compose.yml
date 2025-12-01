@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  aeronir:
+    build: .
+    container_name: aeronir
+    ports:
+      - "3000:3000"
+    volumes:
+      # Persist database
+      - ./db.json:/app/db.json
+      # Persist saved tiles
+      - ./public/saved_tiles:/app/public/saved_tiles
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET:-change-this-secret-in-production}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
