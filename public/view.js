@@ -256,7 +256,16 @@ function closeLightbox() {
 }
 
 // Event Listeners
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Check authentication
+    const auth = await requireAuth();
+    if (!auth) return;
+    
+    updateUserUI(auth.user);
+    if (auth.user.role === 'admin') {
+        document.getElementById('admin-link').style.display = '';
+    }
+    
     loadData();
     
     // Filter

@@ -11,6 +11,12 @@ let tempRect = null;
 // Saved boxes with their Leaflet objects
 const rectangles = new Map(); // boxId -> { rect, data }
 
+// Other users' cursors
+const otherCursors = new Map(); // userId -> cursor element
+
+// Current user (to ignore own events)
+let currentUser = null;
+
 // Tile Presets
 const TILE_PRESETS = {
     sentinel: {
@@ -332,9 +338,19 @@ function initMap() {
     });
 
     map.on('mousemove', (e) => {
-        if (!startLatLng || !tempRect) return;
-        const bounds = L.latLngBounds(startLatLng, e.latlng);
-        tempRect.setBounds(bounds);
+        // Update temp rect if drawing
+        if (startLatLng && tempRect) {
+            const bounds = L.latLngBounds(startLatLng, e.latlng);
+            tempRect.setBounds(bounds);
+        }
+
+        // Send cursor position to other users (throttled)
+        if (typeof sendCursorPosition === 'function') {
+            if (!map._lastCursorSend || Date.now() - map._lastCursorSend > 100) {
+                sendCursorPosition(e.latlng.lat, e.latlng.lng);
+                map._lastCursorSend = Date.now();
+            }
+        }
     });
 
     map.on('mouseup', async (e) => {
@@ -489,12 +505,173 @@ function initUI() {
 }
 
 async function init() {
+    // Check authentication
+    const auth = await requireAuth();
+    if (!auth) return;
+
+    currentUser = auth.user;
+
+    // Update UI with user info
+    updateUserUI(auth.user);
+
+    // Show admin link if admin
+    if (auth.user.role === 'admin') {
+        document.getElementById('admin-link').style.display = '';
+    }
+
     initUI();
     initMap();
     await loadLabels();
+
+    // Initialize real-time sync
+    if (typeof initSocket === 'function' && auth.token) {
+        initSocket(auth.token);
+    }
+}
+
+// === Real-time Event Handlers ===
+
+// Handle label created by other user
+function handleLabelCreated(label) {
+    // Check if this label was created by us (to avoid duplicates)
+    if (currentUser && label.userId === currentUser.id) return;
+
+    const select = document.getElementById('label-select');
+
+    // Check if already exists
+    if (select.querySelector(`option[value="${label.id}"]`)) return;
+
+    const opt = document.createElement('option');
+    opt.value = label.id;
+    opt.textContent = label.name;
+    select.appendChild(opt);
+
+    // Also update label list
+    const container = document.getElementById('label-list');
+    if (container) {
+        const item = document.createElement('div');
+        item.className = 'label-item';
+        item.innerHTML = `
+            <span class="label-name">${label.name}</span>
+            <button class="delete-btn" data-id="${label.id}" title="Delete label">×</button>
+        `;
+        item.querySelector('.delete-btn').addEventListener('click', async (e) => {
+            const id = e.target.dataset.id;
+            if (confirm('Delete label and all associated boxes?')) {
+                await deleteLabel(id);
+            }
+        });
+        container.appendChild(item);
+    }
+}
+
+// Handle label deleted by other user
+function handleLabelDeleted(labelId) {
+    const select = document.getElementById('label-select');
+    const opt = select.querySelector(`option[value="${labelId}"]`);
+    if (opt) opt.remove();
+
+    // Update label list
+    const container = document.getElementById('label-list');
+    if (container) {
+        const items = container.querySelectorAll(`.delete-btn[data-id="${labelId}"]`);
+        items.forEach(btn => btn.closest('.label-item')?.remove());
+    }
+
+    // Reset selection if this was the selected label
+    if (currentLabelId === labelId) {
+        currentLabelId = null;
+        currentLabelName = null;
+        select.value = '';
+        if (drawEnabled) {
+            drawEnabled = false;
+            updateDrawButtonText();
+        }
+    }
+}
+
+// Handle box created by other user
+function handleBoxCreated(box) {
+    // Check if this box was created by us
+    if (currentUser && box.userId === currentUser.id) return;
+
+    // Check if already exists
+    if (rectangles.has(box.id)) return;
+
+    const sw = L.latLng(box.bounds.south, box.bounds.west);
+    const ne = L.latLng(box.bounds.north, box.bounds.east);
+    const rect = L.rectangle([sw, ne], {
+        color: getLabelColor(box.labelId),
+        weight: 2,
+        fillOpacity: 0.2
+    }).addTo(map);
+
+    const popupContent = createPopupContent(box);
+    rect.bindPopup(popupContent);
+
+    rectangles.set(box.id, { rect, data: box });
+    updateStats();
+}
+
+// Handle box deleted by other user
+function handleBoxDeleted(boxId) {
+    const rectData = rectangles.get(boxId);
+    if (rectData) {
+        map.removeLayer(rectData.rect);
+        rectangles.delete(boxId);
+        updateStats();
+    }
+}
+
+// Handle cursor updates from other users
+function handleCursorUpdate(data) {
+    if (!map || !data.lat || !data.lng) return;
+
+    let cursor = otherCursors.get(data.userId);
+
+    if (!cursor) {
+        // Create new cursor element
+        cursor = document.createElement('div');
+        cursor.className = 'other-cursor';
+        cursor.innerHTML = `
+            <div class="cursor-dot" style="background: ${stringToColor(data.email)}"></div>
+            <div class="cursor-label" style="background: ${stringToColor(data.email)}">${data.email.split('@')[0]}</div>
+        `;
+        document.getElementById('map').appendChild(cursor);
+        otherCursors.set(data.userId, cursor);
+    }
+
+    // Update position
+    const point = map.latLngToContainerPoint([data.lat, data.lng]);
+    cursor.style.left = point.x + 'px';
+    cursor.style.top = point.y + 'px';
+
+    // Clear timeout and set new one to hide cursor after inactivity
+    if (cursor.hideTimeout) clearTimeout(cursor.hideTimeout);
+    cursor.style.display = 'block';
+    cursor.hideTimeout = setTimeout(() => {
+        cursor.style.display = 'none';
+    }, 5000);
+}
+
+// Helper function for color generation
+function stringToColor(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = hash % 360;
+    return `hsl(${hue}, 60%, 45%)`;
 }
 
 // Global function for popup button
 window.deleteBox = deleteBox;
+
+// Export handlers for socket.js
+window.handleLabelCreated = handleLabelCreated;
+window.handleLabelDeleted = handleLabelDeleted;
+window.handleBoxCreated = handleBoxCreated;
+window.handleBoxDeleted = handleBoxDeleted;
+window.handleCursorUpdate = handleCursorUpdate;
 
 document.addEventListener('DOMContentLoaded', init);

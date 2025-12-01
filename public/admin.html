@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#14b8a6" />
+    <title>User Management - Aeronir</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div id="topbar">
+        <div class="logo">
+            <img src="/icons/icon-32.png" alt="Aeronir" class="logo-img" />
+            <span class="logo-text">Aeronir</span>
+        </div>
+        <nav class="nav-links">
+            <a href="/" class="toplink">Label</a>
+            <a href="/view" class="toplink">Gallery</a>
+            <a href="/export" class="toplink">YOLO Export</a>
+            <a href="/db" class="toplink">Database</a>
+            <a href="/admin" class="toplink active">Users</a>
+        </nav>
+        <div id="user-info" class="user-info"></div>
+    </div>
+
+    <div id="admin-container">
+        <div class="admin-header">
+            <h1>👥 User Management</h1>
+            <p class="subtitle">Manage user accounts and permissions</p>
+        </div>
+
+        <div class="admin-stats" id="admin-stats">
+            <div class="stat-card">
+                <span class="stat-icon">👤</span>
+                <span class="stat-number" id="stat-users">0</span>
+                <span class="stat-text">Total Users</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon">👑</span>
+                <span class="stat-number" id="stat-admins">0</span>
+                <span class="stat-text">Admins</span>
+            </div>
+        </div>
+
+        <div class="users-table-container">
+            <table class="users-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="users-tbody">
+                    <tr>
+                        <td colspan="5" class="loading">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="/auth.js"></script>
+    <script>
+        let currentUser = null;
+
+        async function init() {
+            const auth = await requireAuth();
+            if (!auth) return;
+
+            currentUser = auth.user;
+            updateUserUI(currentUser);
+
+            // Check if admin
+            if (currentUser.role !== 'admin') {
+                document.getElementById('admin-container').innerHTML = `
+                    <div class="access-denied">
+                        <h2>🚫 Access Denied</h2>
+                        <p>You need admin privileges to view this page.</p>
+                        <a href="/" class="auth-btn">Back to Home</a>
+                    </div>
+                `;
+                return;
+            }
+
+            await loadUsers();
+        }
+
+        async function loadUsers() {
+            try {
+                const res = await fetch('/api/admin/users');
+                if (!res.ok) throw new Error('Failed to load users');
+
+                const users = await res.json();
+                renderUsers(users);
+                updateStats(users);
+            } catch (err) {
+                console.error(err);
+                showToast('Error loading users', true);
+            }
+        }
+
+        function updateStats(users) {
+            document.getElementById('stat-users').textContent = users.length;
+            document.getElementById('stat-admins').textContent = users.filter(u => u.role === 'admin').length;
+        }
+
+        function renderUsers(users) {
+            const tbody = document.getElementById('users-tbody');
+
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="no-data">No users found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = users.map(user => `
+                <tr data-id="${user.id}">
+                    <td>${user.id}</td>
+                    <td>
+                        ${user.email}
+                        ${user.id === currentUser.id ? '<span class="you-badge">You</span>' : ''}
+                    </td>
+                    <td>
+                        <select class="role-select" onchange="changeRole(${user.id}, this.value)" ${user.id === currentUser.id ? 'disabled' : ''}>
+                            <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
+                            <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                        </select>
+                    </td>
+                    <td>${new Date(user.createdAt).toLocaleDateString()}</td>
+                    <td>
+                        ${user.id !== currentUser.id ?
+                    `<button class="delete-user-btn" onclick="deleteUser(${user.id})">Delete</button>` :
+                    '<span class="no-action">-</span>'
+                }
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function changeRole(userId, newRole) {
+            try {
+                const res = await fetch(`/api/admin/users/${userId}/role`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role: newRole })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    showToast('Role updated');
+                    await loadUsers();
+                } else {
+                    showToast(data.error || 'Failed to update role', true);
+                    await loadUsers(); // Revert UI
+                }
+            } catch (err) {
+                showToast('Connection error', true);
+                await loadUsers();
+            }
+        }
+
+        async function deleteUser(userId) {
+            if (!confirm('Are you sure you want to delete this user?')) return;
+
+            try {
+                const res = await fetch(`/api/admin/users/${userId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    showToast('User deleted');
+                    await loadUsers();
+                } else {
+                    showToast(data.error || 'Failed to delete user', true);
+                }
+            } catch (err) {
+                showToast('Connection error', true);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+
+</html>
