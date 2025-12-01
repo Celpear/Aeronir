@@ -44,37 +44,6 @@
     <div id="layout">
         <div id="sidebar">
             <div class="sidebar-section">
-                <h2>🎯 Tools</h2>
-                <button id="toggle-draw" class="tool-btn">✏️ Draw OFF</button>
-                <p class="hint">
-                    Select a label, enable drawing and drag rectangles on the map.
-                </p>
-            </div>
-
-            <div class="sidebar-section">
-                <div class="section-header">
-                    <h3>🏷️ Labels</h3>
-                </div>
-
-                <div class="form-group">
-                    <label for="label-select">Active Label:</label>
-                    <select id="label-select">
-                        <option value="">-- please select --</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="new-label-input">New Label:</label>
-                    <div class="input-row">
-                        <input id="new-label-input" type="text" placeholder="e.g. Building" />
-                        <button id="add-label-btn" class="icon-btn" title="Add">+</button>
-                    </div>
-                </div>
-
-                <div id="label-list" class="label-list"></div>
-            </div>
-
-            <div class="sidebar-section">
                 <h3>📊 Statistics</h3>
                 <div id="stats" class="stats-grid">
                     <div class="stat">
@@ -109,13 +78,45 @@
                 </p>
             </div>
 
+            <div class="sidebar-section">
+                <div class="section-header">
+                    <h3>🏷️ Labels</h3>
+                </div>
+
+                <div class="form-group">
+                    <label for="label-select">Active Label:</label>
+                    <select id="label-select">
+                        <option value="">-- please select --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="new-label-input">New Label:</label>
+                    <div class="input-row">
+                        <input id="new-label-input" type="text" placeholder="e.g. Building" />
+                        <button id="add-label-btn" class="icon-btn" title="Add">+</button>
+                    </div>
+                </div>
+
+                <div id="label-list" class="label-list"></div>
+            </div>
+
             <div class="sidebar-section zoom-info">
                 <span class="zoom-label">Zoom:</span>
                 <span id="current-zoom" class="zoom-value">0</span>
             </div>
         </div>
 
-        <div id="map"></div>
+        <div id="map">
+            <!-- Map Overlay Controls -->
+            <div id="map-controls">
+                <button id="toggle-draw" class="map-tool-btn">✏️ Draw OFF</button>
+                <div id="active-label-display" class="active-label-badge">
+                    <span class="label-dot"></span>
+                    <span id="active-label-text">No label selected</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
