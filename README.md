@@ -13,7 +13,9 @@ Aeronir is a web-based tool for labeling satellite/aerial imagery tiles with bou
 ## ✨ Features
 
 - 🗺️ **Interactive Map Labeling** - Draw bounding boxes directly on satellite imagery
+- 📱 **Mobile Touch Support** - Full touch support for drawing boxes on smartphones/tablets
 - 👥 **Real-time Collaboration** - Multiple users can work simultaneously with live sync
+- 🔄 **Auto-Reconnect** - Automatic WebSocket reconnection on connection loss
 - 🔐 **User Authentication** - Secure login, registration, and admin user management
 - 🛰️ **Multiple Tile Sources** - Sentinel-2 Cloudless, OpenStreetMap, ESRI Satellite, or custom URLs
 - 📦 **Automatic Tile Stitching** - Multi-tile boxes are automatically combined into single images
@@ -34,8 +36,8 @@ Aeronir is a web-based tool for labeling satellite/aerial imagery tiles with bou
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/aeronir.git
-cd aeronir
+git clone https://github.com/Celpear/Aeronir.git
+cd Aeronir
 
 # Install dependencies
 npm install
@@ -59,8 +61,14 @@ Add label names in the sidebar (e.g., "Building", "Road", "Field").
 
 ### 2. Draw Boxes
 1. Select a label from the dropdown
-2. Click the **Draw ON** button
+2. Click the **Draw ON** button (located on the map overlay)
 3. Click and drag on the map to create bounding boxes
+
+**On Mobile/Touch devices:**
+- Tap **Draw ON** to enable drawing mode
+- Touch and drag to draw boxes
+- A teal border indicates active drawing mode
+- Release to save the box
 
 ### 3. Collaborate
 - See online users in the top bar
@@ -150,23 +158,33 @@ Aeronir includes a complete authentication system:
 - **Image Processing**: Sharp
 - **Authentication**: JWT, bcrypt
 
+## 🎨 UI Components
+
+### Map Overlay Controls
+The drawing controls are positioned directly on the map for easy access:
+- **Draw ON/OFF** button - Toggle drawing mode
+- **Active Label Badge** - Shows currently selected label with color indicator
+
+### Label Management
+Labels are displayed as compact, color-coded chips that wrap horizontally. This keeps the sidebar compact even with many labels.
+
 ## 📂 Project Structure
 
 ```
 aeronir/
 ├── public/
 │   ├── index.html      # Main labeling interface
-│   ├── app.js          # Map & drawing logic
+│   ├── app.js          # Map & drawing logic (mouse + touch)
 │   ├── auth.js         # Authentication utilities
-│   ├── socket.js       # Real-time sync client
+│   ├── socket.js       # Real-time sync + auto-reconnect
 │   ├── view.html       # Gallery view
 │   ├── export.html     # YOLO export page
 │   ├── login.html      # Login page
 │   ├── register.html   # Registration page
 │   ├── setup.html      # Admin setup page
 │   ├── admin.html      # User management
-│   ├── db.html         # Database viewer
-│   ├── styles.css      # Styling
+│   ├── db.html         # Database viewer (admin reset)
+│   ├── styles.css      # Styling (responsive)
 │   ├── icons/          # App icons (PWA)
 │   ├── manifest.json   # PWA manifest
 │   └── saved_tiles/    # Downloaded tile images
@@ -222,6 +240,14 @@ Real-time events for collaboration:
 | `cursor:move` | Client → Server | Cursor position update |
 | `cursor:update` | Server → Client | Other user's cursor |
 | `db:reset` | Server → Client | Database was reset |
+
+### Auto-Reconnect
+
+The WebSocket client includes automatic reconnection:
+- Up to **10 reconnection attempts**
+- **3 second delay** between attempts (max 10s)
+- Visual toast notifications for connection status
+- Manual reconnect available via `forceReconnect()`
 
 ## 🌐 Environment Variables
 

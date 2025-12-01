@@ -287,45 +287,73 @@ body {
 .label-list {
     margin-top: 12px;
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: 6px;
-    max-height: 150px;
+    max-height: 120px;
     overflow-y: auto;
+    padding: 4px 0;
 }
 
 .label-item {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
+    gap: 6px;
+    padding: 4px 8px 4px 10px;
     background: var(--bg-dark);
-    border-radius: var(--radius-sm);
+    border-radius: 20px;
     border: 1px solid var(--border-color);
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.label-item:hover {
+    border-color: var(--accent-primary);
+}
+
+.label-color-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
 }
 
 .label-name {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .label-item .delete-btn {
-    width: 24px;
-    height: 24px;
+    width: 16px;
+    height: 16px;
     border: none;
-    border-radius: 4px;
+    border-radius: 50%;
     background: transparent;
     color: var(--text-muted);
-    font-size: 16px;
+    font-size: 12px;
+    line-height: 1;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 0;
 }
 
 .label-item .delete-btn:hover {
     background: var(--accent-danger);
     color: white;
+}
+
+/* Empty state */
+.label-list:empty::after {
+    content: 'No labels yet';
+    color: var(--text-muted);
+    font-size: 12px;
+    font-style: italic;
 }
 
 /* === Stats === */
@@ -443,6 +471,93 @@ body {
 
 #map.drawing-mode .draw-hint {
     display: block;
+}
+
+/* === Map Overlay Controls === */
+#map-controls {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.map-tool-btn {
+    padding: 12px 20px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+    min-width: 130px;
+}
+
+.map-tool-btn:hover {
+    background: var(--bg-hover);
+    transform: translateY(-1px);
+}
+
+.map-tool-btn:active {
+    transform: translateY(0);
+}
+
+.map-tool-btn.active {
+    background: linear-gradient(135deg, var(--accent-tertiary) 0%, var(--accent-primary) 100%);
+    border-color: var(--accent-primary);
+    box-shadow: var(--shadow-teal);
+    color: white;
+}
+
+/* Active Label Badge */
+.active-label-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
+    font-size: 13px;
+    color: var(--text-secondary);
+    max-width: 200px;
+}
+
+.active-label-badge.has-label {
+    border-color: var(--accent-primary);
+    color: var(--text-primary);
+}
+
+.label-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.active-label-badge.has-label .label-dot {
+    background: var(--accent-primary);
+    box-shadow: 0 0 8px var(--accent-glow);
+}
+
+#active-label-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* === Leaflet Dark Theme === */
@@ -1838,6 +1953,26 @@ body.auth-page {
     #map {
         min-height: 60vh;
         height: 60vh;
+    }
+
+    /* Map overlay controls */
+    #map-controls {
+        top: 10px;
+        right: 10px;
+        left: auto;
+        flex-direction: column;
+        align-items: flex-end;
+    }
+
+    .map-tool-btn {
+        padding: 10px 16px;
+        font-size: 14px;
+        min-width: auto;
+    }
+
+    .active-label-badge {
+        padding: 8px 12px;
+        font-size: 12px;
     }
 
     /* Export page */

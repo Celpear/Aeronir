@@ -1,6 +1,11 @@
 async function loadDB() {
     try {
-        const res = await fetch('/api/db');
+        const res = await fetch('/api/db', { credentials: 'include' });
+
+        if (!res.ok) {
+            throw new Error('Failed to load database');
+        }
+
         const data = await res.json();
 
         const container = document.getElementById('db-content');
@@ -17,21 +22,36 @@ async function resetDB() {
     }
 
     try {
-        await fetch('/api/db/reset', { method: 'DELETE' });
+        const res = await fetch('/api/db/reset', {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || 'Reset failed');
+        }
+
         await loadDB();
-        showToast('Database reset');
+        showToastLocal('Database reset successfully!', 'success');
     } catch (err) {
         console.error(err);
-        alert('Error resetting database');
+        showToastLocal('Error: ' + err.message, 'error');
     }
 }
 
-function showToast(message) {
+function showToastLocal(message, type = 'info') {
+    // Use global showToast if available (from socket.js)
+    if (typeof window.showToast === 'function') {
+        window.showToast(message, type);
+        return;
+    }
+
     const existing = document.querySelector('.toast');
     if (existing) existing.remove();
 
     const toast = document.createElement('div');
-    toast.className = 'toast';
+    toast.className = `toast toast-${type}`;
     toast.textContent = message;
     document.body.appendChild(toast);
 
@@ -46,14 +66,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Check authentication
     const auth = await requireAuth();
     if (!auth) return;
-    
+
     updateUserUI(auth.user);
+
+    const resetBtn = document.getElementById('reset-btn');
+
     if (auth.user.role === 'admin') {
         document.getElementById('admin-link').style.display = '';
+        resetBtn.style.display = '';
+    } else {
+        // Hide reset button for non-admins
+        resetBtn.style.display = 'none';
     }
-    
+
     loadDB();
 
     document.getElementById('refresh-btn').addEventListener('click', loadDB);
-    document.getElementById('reset-btn').addEventListener('click', resetDB);
+    resetBtn.addEventListener('click', resetDB);
 });
+

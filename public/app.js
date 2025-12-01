@@ -76,8 +76,10 @@ function updateLabelList(labels) {
     labels.forEach(label => {
         const item = document.createElement('div');
         item.className = 'label-item';
+        const color = getLabelColor(label.id);
         item.innerHTML = `
-            <span class="label-name">${label.name}</span>
+            <span class="label-color-dot" style="background: ${color}"></span>
+            <span class="label-name" title="${label.name}">${label.name}</span>
             <button class="delete-btn" data-id="${label.id}" title="Delete label">×</button>
         `;
         container.appendChild(item);
@@ -86,6 +88,7 @@ function updateLabelList(labels) {
     // Event listeners for delete
     container.querySelectorAll('.delete-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
             const id = e.target.dataset.id;
             if (confirm('Delete label and all associated boxes?')) {
                 await deleteLabel(id);
@@ -302,6 +305,28 @@ function updateDrawButtonText() {
             map.doubleClickZoom.enable();
         }
         mapEl.style.cursor = '';
+    }
+}
+
+function updateActiveLabelDisplay() {
+    const badge = document.getElementById('active-label-display');
+    const text = document.getElementById('active-label-text');
+    const dot = badge?.querySelector('.label-dot');
+
+    if (!badge || !text) return;
+
+    if (currentLabelName) {
+        badge.classList.add('has-label');
+        text.textContent = currentLabelName;
+        if (dot) {
+            dot.style.background = getLabelColor(currentLabelId);
+        }
+    } else {
+        badge.classList.remove('has-label');
+        text.textContent = 'No label selected';
+        if (dot) {
+            dot.style.background = '';
+        }
     }
 }
 
@@ -602,6 +627,7 @@ function initUI() {
                     e.target.options[e.target.selectedIndex];
                 currentLabelName = selectedOption.textContent;
             }
+            updateActiveLabelDisplay();
         });
 
     // Tile preset
@@ -682,11 +708,14 @@ function handleLabelCreated(label) {
     if (container) {
         const item = document.createElement('div');
         item.className = 'label-item';
+        const color = getLabelColor(label.id);
         item.innerHTML = `
-            <span class="label-name">${label.name}</span>
+            <span class="label-color-dot" style="background: ${color}"></span>
+            <span class="label-name" title="${label.name}">${label.name}</span>
             <button class="delete-btn" data-id="${label.id}" title="Delete label">×</button>
         `;
         item.querySelector('.delete-btn').addEventListener('click', async (e) => {
+            e.stopPropagation();
             const id = e.target.dataset.id;
             if (confirm('Delete label and all associated boxes?')) {
                 await deleteLabel(id);
