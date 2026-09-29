@@ -23,20 +23,26 @@
             <img src="/icons/icon-32.png" alt="Aeronir" class="logo-img" />
             <span class="logo-text">Aeronir</span>
         </div>
-        <nav class="nav-links">
-            <a href="/" class="toplink">Label</a>
-            <a href="/view" class="toplink">Gallery</a>
-            <a href="/export" class="toplink active">YOLO Export</a>
-            <a href="/db" class="toplink" id="db-link" style="display:none">Database</a>
-            <a href="/admin" class="toplink" id="admin-link" style="display:none">Users</a>
+        <nav class="nav-links" aria-label="App section">
+            <a href="/" class="toplink active" aria-current="page">Satellite</a>
+            <a href="/datasets" class="toplink">Custom</a>
+            <div class="nav-group nav-group-admin">
+                <a href="/db" class="toplink" id="db-link" style="display:none">Database</a>
+                <a href="/admin" class="toplink" id="admin-link" style="display:none">Users</a>
+            </div>
         </nav>
         <div id="user-info" class="user-info"></div>
     </div>
+    <nav class="sub-appbar" aria-label="Satellite navigation">
+        <a href="/" class="toplink">Label</a>
+        <a href="/view" class="toplink">Gallery</a>
+        <a href="/export" class="toplink active" aria-current="page">YOLO Export</a>
+    </nav>
 
     <div id="export-container">
         <div class="export-header">
-            <h1>🎯 YOLO Dataset Export</h1>
-            <p class="subtitle">Export your dataset in standard YOLO format for YOLOv5/v8 training</p>
+            <h1>🎯 Map YOLO Export</h1>
+            <p class="subtitle">Export satellite/map annotations in YOLO format for YOLOv5/v8 training</p>
         </div>
 
         <div class="export-stats" id="export-stats">

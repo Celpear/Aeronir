@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#14b8a6" />
+    <title>Dataset Labeling - Aeronir</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div id="topbar">
+        <div class="logo">
+            <img src="/icons/icon-32.png" alt="Aeronir" class="logo-img" />
+            <span class="logo-text">Aeronir</span>
+        </div>
+        <nav class="nav-links" aria-label="App section">
+            <a href="/" class="toplink">Satellite</a>
+            <a href="/datasets" class="toplink active" aria-current="page">Custom</a>
+            <div class="nav-group nav-group-admin">
+                <a href="/db" class="toplink" id="db-link" style="display:none">Database</a>
+                <a href="/admin" class="toplink" id="admin-link" style="display:none">Users</a>
+            </div>
+        </nav>
+        <div id="user-info" class="user-info"></div>
+    </div>
+    <nav class="sub-appbar" aria-label="Custom Navigation">
+        <a href="/datasets" class="toplink active" aria-current="page">Datasets</a>
+    </nav>
+
+    <div id="dataset-layout">
+        <aside id="dataset-sidebar">
+            <div class="sidebar-section dataset-project-head">
+                <a href="/datasets" class="back-link">← Custom Datasets</a>
+                <h2 id="project-title">Project</h2>
+                <p id="project-description" class="project-desc"></p>
+                <div id="project-stats" class="dataset-stats"></div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Upload images</h3>
+                <div class="form-group">
+                    <label for="upload-split">Assign to split</label>
+                    <select id="upload-split">
+                        <option value="unassigned">Unassigned (label first)</option>
+                        <option value="train">train</option>
+                        <option value="valid">valid</option>
+                        <option value="test">test</option>
+                    </select>
+                </div>
+                <label id="dropzone" class="dropzone" for="image-input">
+                    <span>Drop images here or click to upload</span>
+                    <small>JPG, PNG, WebP · max 50 files</small>
+                </label>
+                <input id="image-input" type="file" accept="image/*" multiple hidden />
+                <div class="sidebar-actions">
+                    <button id="auto-split-btn" class="small-btn" type="button">Auto-split unassigned 80/15/5</button>
+                    <button id="export-project-btn" class="small-btn primary-btn" type="button">Download YOLO ZIP</button>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="section-header">
+                    <h3>Classes</h3>
+                </div>
+                <div class="form-group">
+                    <label for="label-select">Active class</label>
+                    <select id="label-select">
+                        <option value="">-- select --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="new-label-input">New class</label>
+                    <div class="input-row">
+                        <input id="new-label-input" type="text" placeholder="e.g. car" />
+                        <button id="add-label-btn" class="icon-btn" type="button" title="Add">+</button>
+                    </div>
+                </div>
+                <div id="label-list" class="label-list"></div>
+            </div>
+
+            <div class="sidebar-section flex-grow">
+                <div class="section-header">
+                    <h3>Images</h3>
+                    <select id="split-filter" class="inline-select">
+                        <option value="all">All</option>
+                        <option value="unassigned">Unassigned</option>
+                        <option value="train">train</option>
+                        <option value="valid">valid</option>
+                        <option value="test">test</option>
+                        <option value="unlabeled">Unlabeled</option>
+                    </select>
+                </div>
+                <div id="image-list" class="image-list"></div>
+            </div>
+        </aside>
+
+        <main id="dataset-workspace">
+            <div id="canvas-toolbar">
+                <button id="toggle-draw" class="map-tool-btn" type="button">✏️ Draw OFF</button>
+                <div id="active-label-display" class="active-label-badge">
+                    <span class="label-dot"></span>
+                    <span id="active-label-text">No class selected</span>
+                </div>
+                <div class="toolbar-spacer"></div>
+                <button id="prev-image-btn" class="small-btn" type="button" title="Previous (←)">← Prev</button>
+                <span id="image-counter" class="image-counter">0 / 0</span>
+                <button id="next-image-btn" class="small-btn" type="button" title="Next (→)">Next →</button>
+                <select id="current-split" class="inline-select" disabled>
+                    <option value="unassigned">unassigned</option>
+                    <option value="train">train</option>
+                    <option value="valid">valid</option>
+                    <option value="test">test</option>
+                </select>
+                <button id="copy-image-btn" class="icon-btn toolbar-icon-btn" type="button" title="Copy image" disabled>⧉</button>
+                <button id="delete-image-btn" class="small-btn danger-btn" type="button" disabled>Delete image</button>
+            </div>
+
+            <div id="canvas-stage">
+                <div id="empty-canvas" class="empty-canvas">
+                    <h2>Select or upload an image</h2>
+                    <p>Draw bounding boxes with an active class. Use ← → to move between images.</p>
+                </div>
+                <div id="canvas-wrap" hidden>
+                    <canvas id="label-canvas"></canvas>
+                </div>
+            </div>
+
+            <div id="annotation-bar">
+                <strong>Boxes on this image:</strong>
+                <div id="annotation-chips" class="annotation-chips"></div>
+            </div>
+        </main>
+    </div>
+
+    <div id="copy-modal" class="modal" hidden>
+        <div class="modal-backdrop" data-close-copy></div>
+        <div class="modal-card" role="dialog" aria-labelledby="copy-modal-title">
+            <h2 id="copy-modal-title">Copy image</h2>
+            <p class="modal-subtitle" id="copy-source-name"></p>
+
+            <div class="form-group">
+                <label for="copy-split">Target split</label>
+                <select id="copy-split">
+                    <option value="train">train</option>
+                    <option value="valid">valid</option>
+                    <option value="test">test</option>
+                    <option value="unassigned">unassigned</option>
+                </select>
+            </div>
+
+            <fieldset class="filter-fieldset">
+                <legend>Image filter</legend>
+                <label class="filter-option">
+                    <input type="radio" name="copy-filter" value="none" checked />
+                    <span>
+                        <strong>1:1 Original</strong>
+                        <small>Exact copy without changes</small>
+                    </span>
+                </label>
+                <label class="filter-option">
+                    <input type="radio" name="copy-filter" value="grayscale" />
+                    <span>
+                        <strong>Grayscale</strong>
+                        <small>Grayscale augmentation</small>
+                    </span>
+                </label>
+                <label class="filter-option">
+                    <input type="radio" name="copy-filter" value="tint" />
+                    <span>
+                        <strong>Tinted</strong>
+                        <small>Custom color tint</small>
+                    </span>
+                </label>
+                <div id="tint-controls" class="tint-controls" hidden>
+                    <label class="tint-color-label" for="tint-color">
+                        Color
+                        <input type="color" id="tint-color" value="#14b8a6" />
+                        <span id="tint-color-hex">#14b8a6</span>
+                    </label>
+                    <div class="tint-presets" role="group" aria-label="Preset colors">
+                        <button type="button" class="tint-swatch" data-color="#14b8a6" style="--swatch:#14b8a6" title="Teal"></button>
+                        <button type="button" class="tint-swatch" data-color="#ef4444" style="--swatch:#ef4444" title="Red"></button>
+                        <button type="button" class="tint-swatch" data-color="#3b82f6" style="--swatch:#3b82f6" title="Blue"></button>
+                        <button type="button" class="tint-swatch" data-color="#f59e0b" style="--swatch:#f59e0b" title="Amber"></button>
+                        <button type="button" class="tint-swatch" data-color="#a855f7" style="--swatch:#a855f7" title="Purple"></button>
+                        <button type="button" class="tint-swatch" data-color="#ec4899" style="--swatch:#ec4899" title="Pink"></button>
+                    </div>
+                </div>
+                <label class="filter-option">
+                    <input type="radio" name="copy-filter" value="nightvision" />
+                    <span>
+                        <strong>Night Vision</strong>
+                        <small>Choose phosphor variant</small>
+                    </span>
+                </label>
+                <div id="nv-controls" class="tint-controls nv-controls" hidden>
+                    <div class="nv-variants" role="radiogroup" aria-label="Night vision variants">
+                        <label class="nv-variant">
+                            <input type="radio" name="nv-variant" value="green" checked />
+                            <span class="nv-swatch" style="--swatch:#20dc40"></span>
+                            <span>Green</span>
+                        </label>
+                        <label class="nv-variant">
+                            <input type="radio" name="nv-variant" value="white" />
+                            <span class="nv-swatch" style="--swatch:#dce6f0"></span>
+                            <span>White</span>
+                        </label>
+                        <label class="nv-variant">
+                            <input type="radio" name="nv-variant" value="amber" />
+                            <span class="nv-swatch" style="--swatch:#ffaa28"></span>
+                            <span>Amber</span>
+                        </label>
+                        <label class="nv-variant">
+                            <input type="radio" name="nv-variant" value="cyan" />
+                            <span class="nv-swatch" style="--swatch:#28d2e6"></span>
+                            <span>Cyan</span>
+                        </label>
+                        <label class="nv-variant">
+                            <input type="radio" name="nv-variant" value="red" />
+                            <span class="nv-swatch" style="--swatch:#e63030"></span>
+                            <span>Red</span>
+                        </label>
+                    </div>
+                </div>
+                <label class="filter-option">
+                    <input type="radio" name="copy-filter" value="augmentation" />
+                    <span><strong>Training augmentation</strong><small>Combine exposure, noise and image quality</small></span>
+                </label>
+                <div id="augmentation-controls" class="tint-controls" hidden>
+                    <label for="augmentation-preset">Preset</label>
+                    <select id="augmentation-preset">
+                        <option value="neutral">Neutral / custom settings</option>
+                        <option value="lowlight">Low Light</option>
+                        <option value="soft">Defocused camera</option>
+                        <option value="poor">Poor image quality</option>
+                    </select>
+                    <label class="augmentation-slider" for="aug-exposure"><span>Exposure (EV)</span><output id="aug-exposure-value" for="aug-exposure">0</output>
+                        <input id="aug-exposure" data-augmentation="exposure" type="range" min="-2" max="2" step="0.1" value="0" />
+                    </label>
+                    <label class="augmentation-slider" for="aug-contrast"><span>Contrast</span><output id="aug-contrast-value" for="aug-contrast">1</output>
+                        <input id="aug-contrast" data-augmentation="contrast" type="range" min="0.5" max="1.5" step="0.05" value="1" />
+                    </label>
+                    <label class="augmentation-slider" for="aug-gamma"><span>Gamma</span><output id="aug-gamma-value" for="aug-gamma">1</output>
+                        <input id="aug-gamma" data-augmentation="gamma" type="range" min="0.5" max="2" step="0.05" value="1" />
+                    </label>
+                    <label class="augmentation-slider" for="aug-noise"><span>Sensor noise</span><output id="aug-noise-value" for="aug-noise">0</output>
+                        <input id="aug-noise" data-augmentation="noise" type="range" min="0" max="40" step="1" value="0" />
+                    </label>
+                    <label class="augmentation-slider" for="aug-blur"><span>Blur (px)</span><output id="aug-blur-value" for="aug-blur">0</output>
+                        <input id="aug-blur" data-augmentation="blur" type="range" min="0" max="30" step="0.1" value="0" />
+                    </label>
+                    <label class="augmentation-slider" for="aug-quality"><span>JPEG quality</span><output id="aug-quality-value" for="aug-quality">92</output>
+                        <input id="aug-quality" data-augmentation="quality" type="range" min="10" max="100" step="1" value="92" />
+                    </label>
+                    <label class="augmentation-slider" for="aug-resolution"><span>Detail resolution (%)</span><output id="aug-resolution-value" for="aug-resolution">100</output>
+                        <input id="aug-resolution" data-augmentation="resolution" type="range" min="25" max="100" step="1" value="100" />
+                    </label>
+                    <small>Training images only. The copy is created in the train split. Image dimensions and bounding boxes are preserved.</small>
+                </div>
+            </fieldset>
+
+            <div class="copy-preview-block">
+                <span class="copy-preview-label">Preview</span>
+                <label class="checkbox-row"><input id="preview-original" type="checkbox" /> Show original for comparison (preview only)</label>
+                <small id="augmentation-status" role="status" aria-live="polite"></small>
+                <div class="copy-preview-frame">
+                    <canvas id="copy-preview-canvas" width="560" height="360"></canvas>
+                </div>
+            </div>
+
+            <label class="checkbox-row">
+                <input type="checkbox" id="copy-annotations" checked />
+                Copy bounding boxes too
+            </label>
+
+            <div class="modal-actions">
+                <button type="button" class="export-btn" data-close-copy>Cancel</button>
+                <button type="button" id="confirm-copy-btn" class="export-btn primary">Create copy</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/auth.js"></script>
+    <script src="/dataset.js"></script>
+</body>
+
+</html>

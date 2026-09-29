@@ -23,20 +23,26 @@
             <img src="/icons/icon-32.png" alt="Aeronir" class="logo-img" />
             <span class="logo-text">Aeronir</span>
         </div>
-        <nav class="nav-links">
-            <a href="/" class="toplink">Label</a>
-            <a href="/view" class="toplink active">Gallery</a>
-            <a href="/export" class="toplink">YOLO Export</a>
-            <a href="/db" class="toplink" id="db-link" style="display:none">Database</a>
-            <a href="/admin" class="toplink" id="admin-link" style="display:none">Users</a>
+        <nav class="nav-links" aria-label="App section">
+            <a href="/" class="toplink active" aria-current="page">Satellite</a>
+            <a href="/datasets" class="toplink">Custom</a>
+            <div class="nav-group nav-group-admin">
+                <a href="/db" class="toplink" id="db-link" style="display:none">Database</a>
+                <a href="/admin" class="toplink" id="admin-link" style="display:none">Users</a>
+            </div>
         </nav>
         <div id="user-info" class="user-info"></div>
     </div>
+    <nav class="sub-appbar" aria-label="Satellite navigation">
+        <a href="/" class="toplink">Label</a>
+        <a href="/view" class="toplink active" aria-current="page">Gallery</a>
+        <a href="/export" class="toplink">YOLO Export</a>
+    </nav>
 
     <div id="view-container">
         <div class="view-header">
-            <h1>🖼️ Tile Gallery</h1>
-            <p class="subtitle">All labeled tiles with bounding boxes</p>
+            <h1>🖼️ Map Gallery</h1>
+            <p class="subtitle">Labeled satellite tiles with bounding boxes</p>
         </div>
 
         <div class="view-controls">

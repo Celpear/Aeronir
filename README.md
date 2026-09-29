@@ -13,6 +13,7 @@ Aeronir is a web-based tool for labeling satellite/aerial imagery tiles with bou
 ## ✨ Features
 
 - 🗺️ **Interactive Map Labeling** - Draw bounding boxes directly on satellite imagery
+- 📁 **Custom Dataset Projects** - Upload your own images, label per project, assign train/valid/test, export YOLO ZIP
 - 📱 **Mobile Touch Support** - Full touch support for drawing boxes on smartphones/tablets
 - 👥 **Real-time Collaboration** - Multiple users can work simultaneously with live sync
 - 🔄 **Auto-Reconnect** - Automatic WebSocket reconnection on connection loss
@@ -77,6 +78,13 @@ Add label names in the sidebar (e.g., "Building", "Road", "Field").
 
 ### 4. Export Dataset
 Go to the **YOLO Export** page and download your dataset as a ZIP file.
+
+### 5. Custom Image Datasets
+1. Open **Datasets** and create a named project
+2. Upload your own images (optionally directly into train/valid/test)
+3. Create classes and draw multiple boxes per image
+4. Use **Auto-split** for unassigned images (80/15/5) or set splits manually
+5. Download a YOLO ZIP scoped to that project
 
 ## 📁 Export Structure
 
@@ -178,7 +186,9 @@ aeronir/
 │   ├── auth.js         # Authentication utilities
 │   ├── socket.js       # Real-time sync + auto-reconnect
 │   ├── view.html       # Gallery view
-│   ├── export.html     # YOLO export page
+│   ├── export.html     # YOLO export page (map annotations)
+│   ├── datasets.html   # Custom dataset project hub
+│   ├── dataset.html    # Custom image labeling workspace
 │   ├── login.html      # Login page
 │   ├── register.html   # Registration page
 │   ├── setup.html      # Admin setup page
@@ -187,7 +197,8 @@ aeronir/
 │   ├── styles.css      # Styling (responsive)
 │   ├── icons/          # App icons (PWA)
 │   ├── manifest.json   # PWA manifest
-│   └── saved_tiles/    # Downloaded tile images
+│   ├── saved_tiles/    # Downloaded tile images
+│   └── dataset_files/  # Custom project images
 ├── server.js           # Express + Socket.io server
 ├── db.json             # Database file (gitignored)
 └── package.json
@@ -220,7 +231,15 @@ aeronir/
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/export/yolo` | Get YOLO export data |
+| GET | `/api/export/yolo` | Get YOLO export data (map annotations) |
+| GET | `/api/projects` | List custom dataset projects |
+| POST | `/api/projects` | Create named project |
+| GET | `/api/projects/:id` | Project with images, labels, annotations |
+| DELETE | `/api/projects/:id` | Delete project and files |
+| POST | `/api/projects/:id/images` | Upload images (multipart, optional split) |
+| POST | `/api/projects/:id/auto-split` | Assign unassigned → train/valid/test |
+| POST | `/api/projects/:id/annotations` | Add bounding box |
+| GET | `/api/projects/:id/export/yolo` | YOLO export data for a project |
 | GET | `/api/admin/users` | Get all users (admin) |
 | PUT | `/api/admin/users/:id/role` | Update user role (admin) |
 | DELETE | `/api/admin/users/:id` | Delete user (admin) |
@@ -267,3 +286,21 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ---
 
 Made with ❤️ for the remote sensing community
+
+### Training augmentation for custom datasets
+
+Choose “Training augmentation” in a training image's copy dialog. Combine exposure,
+contrast, gamma, sensor noise, blur, JPEG quality and detail resolution. Presets:
+Low Light, Defocused camera and Poor image quality. Blur is measured in source-image
+pixels (0–30); the defocused preset uses 8 pixels. Use “Show original for comparison”
+to compare the preview before creating a copy. This switch only affects the preview.
+
+Image dimensions stay unchanged, so bounding boxes can be copied unchanged.
+Preview and saved images use the same server processing and fixed noise seed;
+the preview is then resized. Settings are stored with each copy. Both source and
+copy must be in the train split when creating an augmentation. Keep related images
+in the same split afterwards; split management does not enforce permanent grouping.
+These presets simulate image degradation, not physically accurate night vision or
+thermal imaging. Existing copies keep their original settings and are not regenerated.
+
+Run processing tests: `node --test test/augmentation.test.js`

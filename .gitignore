@@ -1,11 +1,17 @@
 # Dependencies
 node_modules/
+.pnpm-store/
 
 # Database
 db.json
+db.json.tmp
+db.json.bak
 
 # Saved tile images
 public/saved_tiles/
+
+# Custom dataset images
+public/dataset_files/
 
 # OS files
 .DS_Store
@@ -21,7 +27,13 @@ Thumbs.db
 *.log
 npm-debug.log*
 
+# Test output and caches
+coverage/
+.nyc_output/
+.cache/
+
 # Environment
 .env
-.env.local
-
+.env.*
+!.env.example
+!.env.*.example
