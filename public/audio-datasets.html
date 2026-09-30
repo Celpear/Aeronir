@@ -44,12 +44,12 @@
                 <h1>Audio Datasets</h1>
                 <p>WAV and MP3 tracks, labeled time segments, and train/valid/test splits.</p>
             </div>
-            <button id="create-project-btn" class="export-btn primary">+ New Project</button>
+            <button id="create-project-btn" class="export-btn primary">+ New dataset</button>
         </header>
 
         <form id="create-project-form" class="create-project-card" hidden>
             <div class="form-group">
-                <label for="project-name">Project name</label>
+                <label for="project-name">Dataset name</label>
                 <input id="project-name" type="text" maxlength="80" placeholder="e.g. speech-and-sounds" required />
             </div>
             <div class="form-group">
@@ -69,6 +69,7 @@
 
     <script src="/auth.js"></script>
     <script src="/audio-projects.js"></script>
+<script type="module" src="/dataset-management.js"></script>
 </body>
 
 </html>

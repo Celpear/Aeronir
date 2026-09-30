@@ -99,3 +99,21 @@ function showToast(message, isError = false) {
     }, 3000);
 }
 
+
+// Accessible, app-styled confirmations for dataset management.
+function confirmAction(message) {
+    return new Promise(resolve => {
+        const dialog = document.createElement('dialog');
+        dialog.className = 'management-dialog confirmation-dialog';
+        const titleId = `confirm-${crypto.randomUUID()}`;
+        const destructive = /^Delete\b/i.test(message);
+        dialog.setAttribute('aria-labelledby', titleId);
+        dialog.innerHTML = `<h2 id="${titleId}">${destructive ? 'Confirm deletion' : 'Update dataset splits'}</h2><p></p><div class="dataset-actions"><button type="button" class="export-btn" data-cancel>Cancel</button><button type="button" class="${destructive ? 'danger-btn' : 'export-btn primary'}" data-confirm>${destructive ? 'Delete' : 'Apply split'}</button></div>`;
+        dialog.querySelector('p').textContent = message;
+        const finish = answer => { dialog.close(); dialog.remove(); resolve(answer); };
+        dialog.querySelector('[data-cancel]').onclick = () => finish(false);
+        dialog.querySelector('[data-confirm]').onclick = () => finish(true);
+        dialog.addEventListener('cancel', event => { event.preventDefault(); finish(false); });
+        document.body.append(dialog); dialog.showModal(); dialog.querySelector('[data-cancel]').focus();
+    });
+}

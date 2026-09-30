@@ -1,4 +1,5 @@
 // Explicit end-to-end smoke test: downloads weights and trains one synthetic epoch.
+import {yoloPython} from '../lib/python-runtime.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,7 +10,7 @@ import {trainingRouter} from '../lib/training.js';
 const repo=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 await fs.mkdir(path.join(repo,'training_runs'),{recursive:true});
 const root=await fs.mkdtemp(path.join(repo,'training_runs','smoke-'));
-process.env.YOLO_PYTHON=process.env.YOLO_PYTHON || path.join(repo,'.venv-yolo','bin','python');
+process.env.YOLO_PYTHON=yoloPython(repo);
 let router,server;
 try {
     await fs.mkdir(path.join(root,'training'));await fs.copyFile(path.join(repo,'training','runner.py'),path.join(root,'training','runner.py'));

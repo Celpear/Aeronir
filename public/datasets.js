@@ -34,7 +34,7 @@ function renderProjects(projects) {
             <article class="project-card">
                 <div class="project-card-top">
                     <h2><a href="/dataset?id=${p.id}">${escapeHtml(p.name)}</a></h2>
-                    <button class="delete-btn project-delete" data-id="${p.id}" title="Delete project">×</button>
+                    <div class="dataset-actions"><button class="dataset-edit icon-action" data-id="${p.id}" aria-label="Edit dataset">Edit</button><button class="danger-btn project-delete" data-id="${p.id}" title="Delete dataset">Delete</button></div>
                 </div>
                 ${p.description ? `<p class="project-desc">${escapeHtml(p.description)}</p>` : ''}
                 <div class="project-meta">
@@ -50,16 +50,18 @@ function renderProjects(projects) {
                 </div>
                 <div class="project-card-footer">
                     <small>Updated ${formatDate(p.updatedAt || p.createdAt)}</small>
-                    <a class="export-btn primary small-link-btn" href="/dataset?id=${p.id}">Open</a>
+                    <div class="dataset-actions"><a class="export-btn small-link-btn" href="/dataset?id=${p.id}">Open</a><button class="export-btn primary small-link-btn" data-train-source="custom:${p.id}">Train model <span aria-hidden="true">→</span></button></div>
                 </div>
             </article>
         `;
     }).join('');
 
+    document.dispatchEvent(new CustomEvent('datasets-rendered'));
+
     grid.querySelectorAll('.project-delete').forEach((btn) => {
         btn.addEventListener('click', async () => {
             const id = btn.dataset.id;
-            if (!confirm('Delete this project and all of its images/labels?')) return;
+            if (!await confirmAction('Delete this project and all of its images/labels?')) return;
             try {
                 await api(`/api/projects/${id}`, { method: 'DELETE' });
                 await loadProjects();

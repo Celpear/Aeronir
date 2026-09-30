@@ -43,7 +43,7 @@
     <div id="view-container">
         <div class="view-header">
             <h1>🖼️ Map Gallery</h1>
-            <p class="subtitle">Labeled satellite tiles with bounding boxes</p>
+            <p class="subtitle">Manage your satellite dataset, inspect annotations, and train a model.</p><div class="dataset-actions"><button class="export-btn primary" data-train-source="satellite">Train model →</button><a class="export-btn" href="/training">Training runs</a></div><p id="gallery-status" role="status"></p>
         </div>
 
         <div class="view-controls">
@@ -75,7 +75,7 @@
             </span>
         </div>
 
-        <div id="gallery" class="gallery-grid"></div>
+        <div id="gallery" class="gallery-grid"></div><details class="gallery-trash"><summary>Recently deleted <span id="trash-count">0</span></summary><p class="hint">Deleted images and annotations can be restored here.</p><div id="gallery-trash-list"></div></details>
 
         <div id="no-data" class="no-data" style="display: none;">
             <span class="no-data-icon">📭</span>
@@ -101,6 +101,7 @@
 
     <script src="/auth.js"></script>
     <script src="/view.js"></script>
+<script type="module" src="/training-launch.js"></script>
 </body>
 
 </html>

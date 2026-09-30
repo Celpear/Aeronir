@@ -288,7 +288,7 @@ function renderSegments() {
         await playSelection();
     }));
     document.querySelectorAll('[data-delete]').forEach(button => button.onclick = action(async () => {
-        if (!confirm('Delete this labeled segment?')) return;
+        if (!await confirmAction('Delete this labeled segment?')) return;
         await api(endpoint(`/segments/${button.dataset.delete}`), { method: 'DELETE' });
         project.segments = project.segments.filter(s => s.id !== button.dataset.delete);
         resetSegment(); render(); draw(); status('Segment deleted.');
@@ -433,7 +433,7 @@ $('audio-preview-play').onclick=action(playSelection);
 $('audio-delete-track').onclick=action(async()=>{
     if(!track || savingSegment || deletingTrack) return;
     const source=track;
-    if(!confirm(`Delete "${source.name}" and all of its labeled segments? This cannot be undone.`)) return;
+    if(!await confirmAction(`Delete "${source.name}" and all of its labeled segments? This cannot be undone.`)) return;
     deletingTrack=true; renderNavigation();
     try {
         await api(endpoint(`/tracks/${source.id}`),{method:'DELETE'});
@@ -455,7 +455,7 @@ $('audio-track-filter').onchange=action(async()=>{await reconcileTrack();remembe
 $('audio-prev').onclick=action(()=>navigateTrack(-1));
 $('audio-next').onclick=action(()=>navigateTrack(1));
 $('audio-auto-split').onclick=action(async()=>{
-    if(!confirm('Randomly assign all unassigned tracks to train/valid/test (80/15/5)? Existing assignments stay unchanged.')) return;
+    if(!await confirmAction('Randomly assign all unassigned tracks to train/valid/test (80/15/5)? Existing assignments stay unchanged.')) return;
     $('audio-auto-split').disabled=true;
     try {
         const result=await api(endpoint('/auto-split'),{method:'POST',body:JSON.stringify({})});
@@ -465,6 +465,7 @@ $('audio-auto-split').onclick=action(async()=>{
     } finally { renderNavigation(); }
 });
 document.addEventListener('keydown', action(async event=>{
+    if(document.querySelector('dialog[open]')) return;
     if(event.target.closest('input,select,textarea,button,[contenteditable="true"]') || event.ctrlKey || event.metaKey || event.altKey) return;
     if(event.key==='ArrowLeft' || event.key==='ArrowRight') {
         event.preventDefault(); await navigateTrack(event.key==='ArrowLeft'?-1:1);

@@ -28,6 +28,11 @@ test('uploads, plays ranges, persists and edits segments, and exports annotation
     const request=async(url,method='GET',body)=>{const res=await fetch(base+url,{method,headers:body instanceof FormData?{}:{'Content-Type':'application/json'},body:body instanceof FormData?body:body?JSON.stringify(body):undefined});return {status:res.status,data:await res.json()};};
     try{
         const {data:p}=await request('/','POST',{name:'Audio test',description:'Test audio annotations'});
+        assert.equal((await request(`/${p.id}`, 'PATCH', {name:'Renamed audio',description:'Edited description'})).status,200);
+        const edited=(await request(`/${p.id}`)).data;
+        assert.equal(edited.name,'Renamed audio'); assert.equal(edited.description,'Edited description');
+        assert.equal((await request(`/${p.id}`, 'PATCH', {name:' '})).status,400);
+        await request(`/${p.id}`, 'PATCH', {name:'Audio test',description:'Test audio annotations'});
         const {data:label}=await request(`/${p.id}/labels`,'POST',{name:'Tone'});
         const form=new FormData();form.append('audio',new Blob([wav()]),'tone.wav');
         const {status:uploadStatus,data:track}=await request(`/${p.id}/tracks`,'POST',form);assert.equal(uploadStatus,201);

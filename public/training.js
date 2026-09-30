@@ -1,5 +1,5 @@
 const $=id=>document.getElementById(id);
-let datasets=[],runs=[],selected=null,environment=null,polling=false,starting=false;
+let runs=[],selected=null,polling=false;
 let stream=null,cameraGeneration=0,cameraRequest=null;
 const active=run=>['preparing','running','stopping'].includes(run.status);
 const status=text=>$('training-status').textContent=text;
@@ -11,15 +11,9 @@ async function api(url,options={}) {
     return data;
 }
 const post=(url,body={})=>api(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-function availability() {
-    const source=datasets.find(d=>d.id===$('training-source').value);
-    $('training-start').disabled=starting||!environment?.ready||!source?.ready||runs.some(active);
-    $('training-source-info').textContent=source?.ready?`${source.classes} classes · ${source.counts.train} train · ${source.counts.valid} validation · ${source.counts.test} test. Unassigned images are excluded.`:source?.error || '';
-}
 function renderRuns() {
     $('training-runs').innerHTML=runs.map(run=>`<button class="audio-track ${selected?.id===run.id?'active':''}" data-run="${run.id}"><strong>${esc(run.datasetName)} · ${esc(run.settings.model)}</strong><small>${esc(run.status)} · ${esc(new Date(run.createdAt).toLocaleString())} · ${run.epoch}/${run.settings.epochs} epochs</small></button>`).join('') || '<p>No training runs yet.</p>';
     document.querySelectorAll('[data-run]').forEach(button=>button.onclick=()=>selectRun(button.dataset.run).catch(error=>status(error.message)));
-    availability();
 }
 async function selectRun(id) {
     if(selected?.id!==id)stopCamera();
@@ -64,15 +58,6 @@ function drawChart() {
     ctx.fillStyle='#aab7c4';ctx.fillText('Epoch 1',40,190);ctx.textAlign='right';ctx.fillText(`Epoch ${data.at(-1).epoch}`,width-15,190);ctx.textAlign='left';
 }
 new ResizeObserver(drawChart).observe($('training-chart'));
-$('training-source').onchange=availability;
-$('training-form').onsubmit=async event=>{
-    event.preventDefault();starting=true;availability();status('Checking environment and preparing training…');
-    try {
-        const body={source:$('training-source').value,model:$('training-model').value,device:$('training-device').value};
-        for(const key of ['epochs','imgsz','batch','patience','seed'])body[key]=Number($(`training-${key}`).value);
-        const run=await post('/runs',body);runs.unshift(run);await selectRun(run.id);status('Training started. You can leave this page and return to the run.');
-    }catch(error){status(error.message);}finally{starting=false;availability();}
-};
 $('training-stop').onclick=async()=>{try{await post(`/runs/${selected.id}/stop`);await selectRun(selected.id);}catch(error){status(error.message);}};
 async function poll() {
     if(polling)return;polling=true;
@@ -119,11 +104,7 @@ window.addEventListener('pagehide',stopCamera);
 async function init() {
     const auth=await window.requireAuth();if(!auth)return;window.updateUserUI(auth.user);
     const params=new URLSearchParams(location.search);
-    datasets=await api('/datasets');$('training-source').innerHTML=datasets.map(d=>`<option value="${esc(d.id)}">${esc(d.name)}${d.ready?'':' (not ready)'}</option>`).join('');
-    if(datasets.some(d=>d.id===params.get('source')))$('training-source').value=params.get('source');
     await poll();const id=params.get('run') || runs[0]?.id;if(id&&runs.some(r=>r.id===id))await selectRun(id);
-    environment=await api('/environment');$('training-environment').textContent=environment.ready?`Ultralytics ${environment.version} · Available devices: ${environment.devices.join(', ')}`:environment.error;
-    for(const option of $('training-device').options)option.disabled=option.value!=='auto'&&!environment.devices?.includes(option.value);
-    availability();setInterval(poll,2000);
+    setInterval(poll,2000);
 }
 init().catch(error=>status(error.message));

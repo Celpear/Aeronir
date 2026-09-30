@@ -1,3 +1,4 @@
+const escapeGalleryText = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 let boxesData = [];
 let labelsData = [];
 let currentTileSize = 300;
@@ -22,6 +23,7 @@ async function loadData() {
             fetch('/api/labels')
         ]);
         
+        if (!boxesRes.ok || !labelsRes.ok) throw new Error('Could not load the gallery. Refresh and try again.');
         boxesData = await boxesRes.json();
         labelsData = await labelsRes.json();
         
@@ -31,8 +33,9 @@ async function loadData() {
         populateLabelFilter();
         renderGallery();
         updateStats();
+        await loadTrash();
     } catch (err) {
-        console.error('Error loading:', err);
+        document.getElementById('gallery-status').textContent = err.message;
     }
 }
 
@@ -46,6 +49,7 @@ function populateLabelFilter() {
         opt.textContent = label.name;
         select.appendChild(opt);
     });
+    select.value = filterLabel;
 }
 
 function updateStats() {
@@ -75,7 +79,7 @@ function renderGallery() {
     gallery.innerHTML = '';
     
     // CSS Grid with variable tile size
-    gallery.style.gridTemplateColumns = `repeat(auto-fill, minmax(${currentTileSize}px, 1fr))`;
+    gallery.style.gridTemplateColumns = `repeat(auto-fill, minmax(min(100%, ${currentTileSize}px), 1fr))`;
     
     filteredBoxes.forEach((box, index) => {
         const card = createBoxCard(box, index);
@@ -135,14 +139,30 @@ function createBoxCard(box, index) {
     
     info.innerHTML = `
         <div class="tile-card-labels">
-            <span class="mini-tag" style="background: ${color}">${box.labelName}</span>
+            <span class="mini-tag" style="background: ${color}">${escapeGalleryText(box.labelName)}</span>
         </div>
         <div class="tile-card-meta">
-            <span class="box-badge">${box.tiles.length} Tile${box.tiles.length !== 1 ? 's' : ''} (${gridSize})</span>
+            <span class="box-badge">${(box.tiles || []).length} Tile${(box.tiles || []).length !== 1 ? 's' : ''} (${gridSize})</span>
             ${box.imageSize ? `<span class="size-badge">${box.imageSize.width}×${box.imageSize.height}px</span>` : ''}
         </div>
     `;
     
+    const remove = document.createElement('button');
+    remove.className = 'danger-btn gallery-delete'; remove.textContent = 'Delete image';
+    remove.setAttribute('aria-label', `Delete image ${box.id}, ${box.labelName}`);
+    remove.onclick = async () => {
+        if (!await confirmAction(`Delete image #${box.id} and its annotation from the gallery and map? You can restore both from Recently deleted.`)) return;
+        remove.disabled = true;
+        try {
+            const response = await fetch(`/api/boxes/${box.id}`, {method: 'DELETE'});
+            if (!response.ok) throw new Error((await response.json()).error || 'Could not delete image.');
+            boxesData = boxesData.filter(item => item.id !== box.id);
+            renderGallery(); updateStats();
+            document.getElementById('gallery-status').textContent = 'Image moved to Recently deleted.';
+            await loadTrash();
+        } catch (error) { document.getElementById('gallery-status').textContent = error.message; remove.disabled = false; }
+    };
+    info.appendChild(remove);
     card.appendChild(canvasContainer);
     card.appendChild(info);
     
@@ -235,12 +255,12 @@ function openLightbox(box) {
     title.textContent = `Box #${box.id}`;
     
     const color = getLabelColor(box.labelId);
-    labelsContainer.innerHTML = `<span class="lightbox-tag" style="background: ${color}">${box.labelName}</span>`;
+    labelsContainer.innerHTML = `<span class="lightbox-tag" style="background: ${color}">${escapeGalleryText(box.labelName)}</span>`;
     
     const gridSize = box.tileGrid ? `${box.tileGrid.width}×${box.tileGrid.height}` : '1×1';
     coords.innerHTML = `
         <div class="coord-item"><strong>Zoom:</strong> ${box.zoom}</div>
-        <div class="coord-item"><strong>Tiles:</strong> ${box.tiles.length} (${gridSize})</div>
+        <div class="coord-item"><strong>Tiles:</strong> ${(box.tiles || []).length} (${gridSize})</div>
         <div class="coord-item"><strong>Size:</strong> ${box.imageSize ? `${box.imageSize.width}×${box.imageSize.height}px` : 'N/A'}</div>
         <div class="coord-item"><strong>YOLO:</strong> ${box.yolo.x_center.toFixed(3)}, ${box.yolo.y_center.toFixed(3)}, ${box.yolo.width.toFixed(3)}, ${box.yolo.height.toFixed(3)}</div>
     `;
@@ -301,3 +321,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target.id === 'lightbox') closeLightbox();
     });
 });
+
+async function loadTrash() {
+    const response = await fetch('/api/boxes/trash');
+    if (!response.ok) throw new Error('Could not load Recently deleted.');
+    const trash = await response.json();
+    document.getElementById('trash-count').textContent = trash.length;
+    const list = document.getElementById('gallery-trash-list'); list.replaceChildren();
+    for (const box of trash) {
+        const row = document.createElement('div'); row.className = 'trash-row';
+        const label = document.createElement('span'); label.textContent = `Image #${box.id} · ${box.labelName}`;
+        const restore = document.createElement('button'); restore.className = 'export-btn'; restore.textContent = 'Restore';
+        restore.onclick = async () => {
+            restore.disabled = true;
+            try {
+                const result = await fetch(`/api/boxes/${box.id}/restore`, {method: 'POST'});
+                if (!result.ok) throw new Error((await result.json()).error || 'Could not restore image.');
+                await loadData(); document.getElementById('gallery-status').textContent = 'Image and annotation restored.';
+            } catch(error) { document.getElementById('gallery-status').textContent = error.message; restore.disabled = false; }
+        };
+        row.append(label, restore); list.append(row);
+    }
+}

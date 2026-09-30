@@ -8,7 +8,7 @@ Aeronir is a web-based tool for labeling satellite/aerial imagery tiles with bou
 
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Node](https://img.shields.io/badge/node-%3E%3D18-green.svg)
+![Node](https://img.shields.io/badge/node-%3E%3D22-green.svg)
 
 ## ✨ Features
 
@@ -26,34 +26,256 @@ Aeronir is a web-based tool for labeling satellite/aerial imagery tiles with bou
 - 🌙 **Dark Theme** - Modern dark UI with teal accents
 - 📲 **PWA Support** - Install as an app on mobile devices
 
-## 🚀 Quick Start
+## 🚀 Installation — macOS, Windows and Linux
 
-### Prerequisites
+Install everything on the computer **running the Aeronir server**. Other devices
+only need a browser. The commands below assume a terminal in the repository root.
 
-- Node.js 18+
-- npm
+### What needs to be installed
 
-### Installation
+- **Node.js 22 or 24 LTS and npm** for the web application. Node 18 is no longer a
+  supported setup for this project. Use the [official Node.js downloads](https://nodejs.org/en/download).
+- **Git** to clone the repository ([Git downloads](https://git-scm.com/downloads)).
+- **Python 3.11 with pip and venv** for YOLO training and webcam inference. Python
+  3.12 is also a setup option on current Linux distributions; this project's local
+  training verification used 3.11. Avoid embedded/stripped Python distributions.
+- **FFmpeg and Info-ZIP `zip`** on PATH for audio segment ZIP exports.
+  **`unzip`** is needed by audio export tests. Windows Explorer's ZIP support and
+  PowerShell's `Compress-Archive` do not provide the `zip` command used by Aeronir.
+- A current browser for audio decoding, canvas previews and camera access.
 
-```bash
-# Clone the repository
+`npm ci` installs the Node dependencies from `package-lock.json`: Express,
+Socket.IO, LowDB, Sharp, authentication, uploads and audio metadata parsing.
+`pip install -r training/requirements.txt` installs pinned Ultralytics and its
+Python dependencies, including PyTorch, TorchVision, NumPy, Pillow and OpenCV.
+PyTorch and the other transitive Python dependencies are resolved by pip for the
+machine; they are not all pinned to identical versions across platforms.
+
+**Neither npm command installs Python, FFmpeg, zip, GPU drivers or model weights.**
+The app can label and export images without Python. Audio ZIP exports need the
+external audio tools; YOLO training and webcam detection need the Python environment.
+The first use of a YOLO model downloads its pretrained weights.
+
+### 1. Install system prerequisites
+
+#### macOS — Terminal
+
+Install [Homebrew](https://brew.sh/) first, then:
+
+```sh
+brew install git node@22 python@3.11 ffmpeg zip unzip
+export PATH="$(brew --prefix node@22)/bin:$PATH"
+node --version
+npm --version
+python3.11 --version
+```
+
+Homebrew's `node@22` is keg-only: add the displayed PATH line to your shell profile
+if you want it available in future terminals. Apple Silicon uses the native ARM64
+Python/PyTorch build for MPS acceleration; avoid mixing a Rosetta x64 Python with
+ARM64 packages. The verified training machine is an Apple M3 Mac.
+
+Intel Macs can run the Node application, but YOLO requires a PyTorch release that
+still provides compatible macOS x64 wheels. The Python package set here has not
+been verified on Intel Macs; do not assume the current default pip resolution
+supports them. Use a supported Python/PyTorch environment or a separate training
+server if compatible wheels are unavailable.
+
+#### Windows — PowerShell (64-bit)
+
+1. Install Node.js 22 or 24 LTS and Git from the links above.
+2. Install the [Python install manager](https://www.python.org/downloads/windows/).
+   Install Python 3.11 with `py install 3.11`. If you already have Python 3.11 with
+   the legacy launcher, skip that install-manager command and verify `py -3.11 --version`.
+3. Install [Scoop](https://scoop.sh/) using its official instructions, then run:
+
+```powershell
+scoop install ffmpeg zip unzip
+```
+
+The Scoop main bucket supplies the required native commands:
+[FFmpeg](https://github.com/ScoopInstaller/Main/blob/master/bucket/ffmpeg.json),
+[zip](https://github.com/ScoopInstaller/Main/blob/master/bucket/zip.json), and
+[unzip](https://github.com/ScoopInstaller/Main/blob/master/bucket/unzip.json).
+Alternatively, install these executables yourself and add their directories to PATH.
+Use a new PowerShell window after installing tools so it picks up PATH changes.
+
+```powershell
+node --version
+npm.cmd --version
+py -3.11 --version
+ffmpeg -version
+zip -v
+unzip -v
+```
+
+These instructions target Windows x64. Windows ARM64/Python/GPU combinations have
+not been verified. `npm.cmd` avoids PowerShell execution-policy restrictions on
+`npm.ps1`; activating a Python environment or weakening the policy is unnecessary.
+
+#### Linux — Ubuntu/Debian example
+
+Install Node.js 22 or 24 LTS using the [official installation options](https://nodejs.org/en/download).
+Distribution repositories may contain an older Node version. Then install:
+
+```sh
+sudo apt update
+sudo apt install git python3 python3-venv python3-pip ffmpeg zip unzip libgl1 libglib2.0-0
+node --version
+npm --version
+python3 --version
+```
+
+Use Python 3.11 or 3.12 for the recipe below. If your distribution's `python3` is a
+different version, install a compatible interpreter and its matching venv package,
+then substitute that command when creating the environment. Other distributions
+need equivalent packages. `libgl1` and GLib provide common OpenCV runtime libraries
+on headless Linux. Minimal Alpine/musl systems may lack matching PyTorch wheels;
+use a supported glibc-based distribution for training.
+
+### 2. Clone and install the application
+
+macOS/Linux:
+
+```sh
 git clone https://github.com/Celpear/Aeronir.git
 cd Aeronir
+npm ci
+```
 
-# Install dependencies
-npm install
+Windows PowerShell:
 
-# Start the server
+```powershell
+git clone https://github.com/Celpear/Aeronir.git
+cd Aeronir
+npm.cmd ci
+```
+
+Use `npm install` instead when intentionally updating dependency resolution; commit
+the changed lockfile with those updates. Do not copy `node_modules` or `.venv-yolo`
+between operating systems or CPU architectures. Recreate them on the destination.
+
+### 3. Install the YOLO Python environment
+
+macOS:
+
+```sh
+python3.11 -m venv .venv-yolo
+.venv-yolo/bin/python -m pip install --upgrade pip
+.venv-yolo/bin/python -m pip install -r training/requirements.txt
+```
+
+Linux:
+
+```sh
+python3 -m venv .venv-yolo
+.venv-yolo/bin/python -m pip install --upgrade pip
+.venv-yolo/bin/python -m pip install -r training/requirements.txt
+```
+
+Windows PowerShell:
+
+```powershell
+py -3.11 -m venv .venv-yolo
+& .\.venv-yolo\Scripts\python.exe -m pip install --upgrade pip
+& .\.venv-yolo\Scripts\python.exe -m pip install -r training\requirements.txt
+```
+
+Aeronir automatically selects `.venv-yolo/bin/python` on macOS/Linux and
+`.venv-yolo\Scripts\python.exe` on Windows. No environment activation is needed.
+For a different environment, set `YOLO_PYTHON` to its **absolute executable path**
+before starting the server:
+
+```sh
+export YOLO_PYTHON="/absolute/path/to/environment/bin/python"
+```
+
+```powershell
+$env:YOLO_PYTHON = 'C:\absolute\path\to\environment\Scripts\python.exe'
+```
+
+### 4. GPU setup (optional)
+
+CPU training is supported, but large datasets take longer. A GPU is not required
+for installation. Auto chooses CUDA, then Apple MPS, then CPU when available.
+
+- **Apple Silicon:** the native macOS PyTorch package provides MPS when the OS and
+  hardware support it. No CUDA installation is needed. Choose CPU if a model
+  operation is unsupported on MPS.
+- **NVIDIA on Windows/Linux:** install a compatible NVIDIA driver and choose the
+  matching PyTorch/TorchVision build using the [official PyTorch installer](https://pytorch.org/get-started/locally/).
+  Run its pip command through your `.venv-yolo` Python (`…/python -m pip`, or
+  `& .\.venv-yolo\Scripts\python.exe -m pip`) so it updates the environment Aeronir
+  actually uses. Install/recheck `training/requirements.txt` afterwards. A working
+  NVIDIA driver alone does not make a CPU-only PyTorch build support CUDA.
+- AMD/ROCm and Windows DirectML are not verified application configurations. The
+  UI offers CPU, Apple MPS and CUDA GPU 0; it has no DirectML device option.
+
+Use the training dialog or the installation check below to see detected devices.
+Webcam inference currently uses CPU regardless of the training device.
+
+### 5. Verify and start
+
+macOS/Linux:
+
+```sh
+npm run doctor
 npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Windows PowerShell:
+
+```powershell
+npm.cmd run doctor
+npm.cmd start
+```
+
+`doctor` checks Node, imports core Node packages, looks for FFmpeg/zip/unzip,
+probes the configured Python environment and available devices, and checks project
+write access. It does not download weights or start training. A missing optional
+component is reported as `MISSING` and produces a nonzero exit status.
+
+Open [http://localhost:3000](http://localhost:3000), create the first admin account,
+and start from a dataset's **Train model** button. Camera access needs localhost
+or HTTPS plus browser/OS permission; another device opening plain HTTP cannot use
+its camera. External fonts, map tiles and CDN scripts also require network access.
+
+Run the automated tests with `npm test` (`npm.cmd test` on Windows). Audio tests
+need FFmpeg, zip and unzip on PATH. `node training/smoke.mjs` additionally downloads
+weights and performs a real one-epoch training/inference test on disposable images.
+
+**Verification scope:** the application and training have been exercised on macOS
+Apple Silicon. Windows/Linux installation recipes and native Python paths are
+provided, but this repository has not yet been tested end-to-end on those systems.
+Passing `doctor` checks prerequisites; it does not certify GPU or camera behavior.
+
+### Troubleshooting and local data
+
+- **Python environment missing:** confirm the interpreter path above, rerun its
+  pip install command, and restart the Node server after changing `YOLO_PYTHON`.
+- **No module named venv / ensurepip:** use a full Python installation; on Linux
+  install the venv package matching the selected Python version.
+- **FFmpeg/zip not found:** restart the terminal/server after updating PATH. Both
+  commands must be visible to the server process, not just a different terminal.
+- **No matching PyTorch wheel:** check OS, architecture and Python version against
+  the official PyTorch installer. Use a supported combination rather than assuming
+  every current Python release is supported by all dependencies.
+- **Sharp fails to load after moving a project:** run `npm ci` on the destination
+  machine to install its native binaries. Do not reuse another OS's `node_modules`.
+- **Out of memory:** reduce batch size and image size in the training dialog.
+- **Port already in use:** stop the other server using port 3000. The current
+  server uses a fixed port; setting `PORT` has no effect.
+
+Keep the project writable. `db.json`, `public/saved_tiles/`, `public/dataset_files/`,
+`audio_files/` and `training_runs/` hold your local data and models. Back these up
+before moving machines or reinstalling. Training snapshots consume additional disk
+space; package installation and initial weight downloads require network access.
 
 ### First-time Setup
 
-1. On first launch, you'll be prompted to create an **Admin account**
-2. The admin can manage users at `/admin`
-3. Additional users can register at `/register`
+1. On first launch, create an **Admin account**.
+2. The admin can manage users at `/admin`.
+3. Additional users can register at `/register`.
 
 ## 📖 Usage
 
@@ -111,11 +333,14 @@ class_id x_center y_center width height
 ```
 All coordinates are normalized (0-1) relative to image dimensions.
 
-## 🎯 Training with YOLOv8
+## 🎯 Optional command-line YOLO training
 
-```bash
-# Install ultralytics
-pip install ultralytics
+For in-app training, use the dataset card and the installation steps above.
+If you prefer the CLI, activate the same virtual environment first (for example
+`source .venv-yolo/bin/activate` on macOS/Linux). On Windows, invoke
+`.\.venv-yolo\Scripts\yolo.exe` directly instead of `yolo`.
+
+```sh
 
 # Start training
 yolo detect train data=data.yaml model=yolov8n.pt epochs=100 imgsz=640
@@ -270,10 +495,16 @@ The WebSocket client includes automatic reconnection:
 
 ## 🌐 Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | 3000 | Server port |
-| `JWT_SECRET` | (auto-generated) | JWT signing secret |
+- `YOLO_PYTHON`: optional absolute Python executable path; otherwise the native
+  `.venv-yolo` interpreter is selected automatically.
+- `JWT_SECRET`: session-signing secret. The code has a fixed development fallback,
+  **not an automatically generated secret**. Set a private, randomly generated
+  secret for a shared deployment before starting Node. Changing it invalidates sessions.
+- Port: currently fixed to **3000** in `server.js`; there is no `PORT` override.
+
+Variables must be present in the process environment. The server does not load a
+`.env` file automatically. Use `export NAME="value"` in macOS/Linux shells or
+`$env:NAME = 'value'` in PowerShell, then start Node in that same terminal.
 
 ## 📝 License
 
@@ -299,7 +530,7 @@ Image dimensions stay unchanged, so bounding boxes can be copied unchanged.
 Preview and saved images use the same server processing and fixed noise seed;
 the preview is then resized. Settings are stored with each copy. Both source and
 copy must be in the train split when creating an augmentation. Keep related images
-in the same split afterwards; split management does not enforce permanent grouping.
+in the same split afterwards; split management keeps original/copy families together.
 These presets simulate image degradation, not physically accurate night vision or
 thermal imaging. Existing copies keep their original settings and are not regenerated.
 
@@ -410,22 +641,15 @@ The legacy metadata-only JSON is available at `/api/audio-projects/:id/export/an
 
 ### In-app YOLO training and webcam preview
 
-Open **Satellite → Training**, **Custom → Training**, or **Train YOLO model** inside
-an image dataset. This trains object detectors on satellite/custom image datasets.
-Audio annotations use a different task and are not included in this training view.
+Start from **Custom → Image Datasets → Train model** on a dataset card, or
+**Satellite → Gallery → Train model**. Choose model and training settings in the
+dataset dialog. The Training page shows runs, metrics, downloads and webcam preview.
 
-Install a Python 3.11 environment once on the Aeronir server:
-
-```sh
-python3.11 -m venv .venv-yolo
-.venv-yolo/bin/python -m pip install -r training/requirements.txt
-```
-
-Aeronir uses `.venv-yolo/bin/python` by default. Set `YOLO_PYTHON` to an absolute
-Python executable path to use another environment (including Windows). The UI
-checks Ultralytics and available CPU/MPS/CUDA devices before enabling training.
-Model weights download on first use; the initial run therefore requires internet.
-The installed Ultralytics version is pinned in `training/requirements.txt`.
+Follow [Installation — macOS, Windows and Linux](#-installation--macos-windows-and-linux)
+for system tools, the Python environment and GPU setup. Run `npm run doctor` to
+check prerequisites. The UI checks Ultralytics and available devices before enabling
+training. Model weights download on first use; that run requires internet.
+Ultralytics is pinned in `training/requirements.txt`.
 
 - Choose YOLO12n/s/m, YOLO11n/s, or YOLOv8n/s, epochs, image size, batch size,
   device, early stopping patience, and seed. Auto prefers CUDA, then MPS, then CPU.
@@ -463,3 +687,13 @@ Tests: `node --test test/*.test.js`. For an explicit real training smoke test:
 `node training/smoke.mjs`. This downloads YOLO12n weights, trains one epoch on four
 synthetic images, checks live metrics and best.pt, runs checkpoint inference, and
 removes its temporary dataset and outputs. It verifies integration, not accuracy.
+
+### Dataset management
+
+Image and audio dataset overviews offer search, name/description editing and deletion.
+Satellite gallery cards move images and their map annotations to Recently deleted, where they can be restored.
+Image Auto-split already uses random shuffling; it now shuffles original/copy families
+together. “Random split open” only assigns unassigned images; “Reshuffle all” replaces
+existing assignments after confirmation. Families with training augmentations stay in
+train, so image counts may differ from 80/15/5. Manual split changes move the entire
+family. Existing training snapshots are unaffected by later dataset edits.

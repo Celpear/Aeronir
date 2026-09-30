@@ -43,7 +43,6 @@
             <div class="sidebar-section dataset-project-head">
                 <a href="/datasets" class="back-link">← Custom Datasets</a>
                 <h2 id="project-title">Project</h2>
-                <a id="train-project-link" class="export-btn primary" href="/training">Train YOLO model</a>
                 <p id="project-description" class="project-desc"></p>
                 <div id="project-stats" class="dataset-stats"></div>
             </div>
@@ -65,7 +64,7 @@
                 </label>
                 <input id="image-input" type="file" accept="image/*" multiple hidden />
                 <div class="sidebar-actions">
-                    <button id="auto-split-btn" class="small-btn" type="button">Auto-split unassigned 80/15/5</button>
+                    <button id="auto-split-btn" class="small-btn" type="button">Random split open · 80/15/5</button><button id="reshuffle-split-btn" class="small-btn" type="button">Reshuffle all · 80/15/5</button><p class="hint">Randomized by original/copy family. Copies stay together; training augmentations stay in train. Ratios are approximate.</p>
                     <button id="export-project-btn" class="small-btn primary-btn" type="button">Download YOLO ZIP</button>
                 </div>
             </div>
@@ -151,7 +150,7 @@
             <p class="modal-subtitle" id="copy-source-name"></p>
 
             <div class="form-group">
-                <label for="copy-split">Target split</label>
+                <label for="copy-split">Split · same as original</label>
                 <select id="copy-split">
                     <option value="train">train</option>
                     <option value="valid">valid</option>

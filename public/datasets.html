@@ -45,12 +45,12 @@
                 <h1>Custom Datasets</h1>
                 <p>Own images, project-based labeling, train/valid/test splits — separate from satellite map labeling.</p>
             </div>
-            <button id="create-project-btn" class="export-btn primary">+ New Project</button>
+            <button id="create-project-btn" class="export-btn primary">+ New dataset</button>
         </header>
 
         <form id="create-project-form" class="create-project-card" hidden>
             <div class="form-group">
-                <label for="project-name">Project name</label>
+                <label for="project-name">Dataset name</label>
                 <input id="project-name" type="text" maxlength="80" placeholder="e.g. drones-cars-v1" required />
             </div>
             <div class="form-group">
@@ -70,6 +70,8 @@
 
     <script src="/auth.js"></script>
     <script src="/datasets.js"></script>
+<script type="module" src="/training-launch.js"></script>
+<script type="module" src="/dataset-management.js"></script>
 </body>
 
 </html>

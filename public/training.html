@@ -6,22 +6,7 @@
 <header class="datasets-hero"><div><h1>YOLO Training</h1><p>Train on your image datasets, follow each epoch, and try best.pt with your webcam.</p></div></header>
 <p id="training-status" role="status" aria-live="polite"></p>
 <div class="training-grid">
-<section class="training-panel"><h2>New training run</h2><p id="training-environment">Checking the training environment…</p>
-<form id="training-form">
-<label>Dataset<select id="training-source" required></select></label><p id="training-source-info" class="hint"></p>
-<div class="training-fields">
-<label>Model<select id="training-model"><option>yolo12n</option><option>yolo12s</option><option>yolo12m</option><option>yolo11n</option><option>yolo11s</option><option>yolov8n</option><option>yolov8s</option></select></label>
-<label>Epochs<input id="training-epochs" type="number" min="1" max="1000" value="50" required></label>
-<label>Image size<input id="training-imgsz" type="number" min="64" max="1536" step="32" value="640" required></label>
-<label>Batch size<input id="training-batch" type="number" min="1" max="64" value="4" required></label>
-<label>Device<select id="training-device"><option value="auto">Auto</option><option value="cpu">CPU</option><option value="mps">Apple MPS</option><option value="0">CUDA GPU 0</option></select></label>
-<label>Early stopping patience<input id="training-patience" type="number" min="0" max="1000" value="20" required></label>
-<label>Random seed<input id="training-seed" type="number" min="0" max="2147483647" value="42" required></label>
-</div>
-<p class="hint">Runs on the Aeronir server. The first run downloads pretrained weights. Patience 0 disables early stopping. Start with a small batch if memory is limited.</p>
-<button id="training-start" class="export-btn primary" disabled>Start training</button>
-</form>
-<h2>Training runs</h2><div id="training-runs" class="training-runs"></div>
+<section class="training-panel"><h2>Your models</h2><p>Start a training run from a dataset card. Return here to follow progress and test your model.</p><div class="dataset-actions"><a class="export-btn" href="/datasets">Image datasets</a><a class="export-btn" href="/view">Satellite gallery</a></div><h2>Training runs</h2><div id="training-runs" class="training-runs"></div>
 </section>
 <section class="training-panel"><h2 id="training-run-title">Select a run</h2><p id="training-run-message"></p>
 <progress id="training-progress" max="100" value="0" aria-label="Epoch progress"></progress><p id="training-progress-label"></p>

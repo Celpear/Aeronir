@@ -4,7 +4,9 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "doctor": "node scripts/doctor.mjs",
+    "test": "node --test"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -17,5 +19,8 @@
     "music-metadata": "^11.16.1",
     "sharp": "^0.34.5",
     "socket.io": "^4.8.1"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

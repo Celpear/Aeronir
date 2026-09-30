@@ -3108,3 +3108,43 @@ body.training-page { overflow: auto; height: auto; min-height: 100vh; }
 #camera-output { display: block; max-width: 100%; height: auto; margin-top: 16px; border-radius: var(--radius-md); }
 #camera-output[hidden] { display: none; }
 @media(max-width: 850px) { .training-grid { grid-template-columns: 1fr; } .training-main { padding: 0 12px 24px; } }
+
+/* Dataset management and contextual training */
+[hidden] { display: none !important; }
+.dataset-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.project-card { padding:22px; gap:16px; }
+.project-card-top h2 { min-width:0; overflow-wrap:anywhere; }
+.project-card-top .dataset-actions { flex-shrink:0; }
+.project-card-footer { flex-wrap:wrap; gap:16px; padding-top:16px; }
+.project-card-footer small { color:var(--text-muted); font-size:12px; }
+.project-card-footer .dataset-actions { margin-left:auto; }
+.icon-action { font:inherit; font-size:13px; color:var(--text-secondary); background:var(--bg-hover); border:1px solid var(--border-color); border-radius:8px; padding:8px 12px; cursor:pointer; }
+.icon-action:hover { color:var(--text-primary); border-color:var(--accent-primary); }
+.project-delete, .gallery-delete { font:inherit; font-size:12px; padding:8px 10px; border-radius:8px; cursor:pointer; }
+.gallery-delete { margin-left:auto; }
+.tile-card-info { flex-wrap:wrap; gap:10px; }
+.dataset-toolbar { display:flex; justify-content:space-between; align-items:end; flex-wrap:wrap; gap:16px; margin:20px 0; color:var(--text-muted); font-size:13px; }
+.dataset-toolbar label { display:grid; gap:8px; width:min(420px,100%); }
+.dataset-toolbar input, .management-dialog input, .management-dialog select, .management-dialog textarea { width:100%; box-sizing:border-box; padding:11px 12px; color:var(--text-primary); background:var(--bg-primary,#0d1117); border:1px solid var(--border-color); border-radius:8px; font:inherit; color-scheme:dark; }
+.management-dialog { width:min(620px,calc(100vw - 32px)); max-height:calc(100dvh - 48px); box-sizing:border-box; overflow:auto; margin:auto; padding:28px; border:1px solid var(--border-color); border-radius:20px; color:var(--text-primary); background:var(--bg-surface); box-shadow:0 24px 100px #0008; }
+.management-dialog::backdrop { background:#050a12b8; backdrop-filter:blur(6px); }
+.management-dialog label { display:grid; gap:8px; margin:12px 0; font-size:14px; color:var(--text-secondary); }
+.management-dialog .training-fields { gap:0 16px; }
+.management-dialog .hint { line-height:1.6; margin:14px 0; color:var(--text-muted); font-size:13px; }
+.management-dialog [role=status] { margin-top:14px; line-height:1.5; }
+.dialog-header { display:flex; align-items:start; justify-content:space-between; gap:16px; margin-bottom:20px; }
+.dialog-header h2 { font-size:24px; overflow-wrap:anywhere; }
+.eyebrow { color:var(--accent-secondary); font-size:11px; font-weight:600; letter-spacing:.15em; margin-bottom:8px; }
+.view-header .dataset-actions { margin-top:16px; }
+@media(max-width:550px) { .project-card-top { flex-wrap:wrap; } .management-dialog { padding:20px; } .project-card-footer .dataset-actions { width:100%; margin:0; } .project-card-footer .export-btn { flex:1; justify-content:center; } }
+.management-dialog button:disabled { opacity:.45; cursor:not-allowed; }
+.management-dialog .training-fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.training-advanced summary { cursor:pointer; color:var(--text-secondary); padding:10px 0; }
+#launch-start { width:100%; justify-content:center; }
+.confirmation-dialog h2 { margin-bottom:16px; }
+.confirmation-dialog p { color:var(--text-secondary); line-height:1.6; margin-bottom:24px; }
+.confirmation-dialog .dataset-actions { justify-content:flex-end; }
+.gallery-trash { margin-top:24px; border-top:1px solid var(--border-color); padding-top:18px; }
+.gallery-trash summary { cursor:pointer; color:var(--text-secondary); }
+.gallery-trash .hint { margin:12px 0; color:var(--text-muted); }
+.trash-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 0; border-bottom:1px solid var(--border-color); }

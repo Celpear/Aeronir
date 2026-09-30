@@ -128,7 +128,7 @@ function updateLabelUI() {
 
     list.querySelectorAll('.delete-btn').forEach((btn) => {
         btn.addEventListener('click', async () => {
-            if (!confirm('Delete class and its boxes in this project?')) return;
+            if (!await confirmAction('Delete class and its boxes in this project?')) return;
             try {
                 await api(`/api/projects/${projectId}/labels/${btn.dataset.id}`, { method: 'DELETE' });
                 await reloadProject();
@@ -510,8 +510,8 @@ function syncFilterControls() {
     const source = images.find(img => img.id === copySourceImageId);
     const training = filter === 'augmentation';
     const splitSelect = document.getElementById('copy-split');
-    splitSelect.disabled = training;
-    if (training) splitSelect.value = 'train';
+    splitSelect.disabled = true;
+    if (source) splitSelect.value = source.split;
     document.getElementById('confirm-copy-btn').disabled = training && source?.split !== 'train';
     for (const el of document.querySelectorAll('[data-augmentation]')) document.getElementById(`aug-${el.dataset.augmentation}-value`).textContent = el.value;
     document.getElementById('tint-color-hex').textContent = getTintColor();
@@ -602,7 +602,7 @@ function openCopyModal(imageId) {
     if (!img) return;
     copySourceImageId = imageId;
     document.getElementById('copy-source-name').textContent = img.originalName;
-    document.getElementById('copy-split').value = img.split === 'unassigned' ? 'train' : img.split;
+    document.getElementById('copy-split').value = img.split;
     document.querySelector('input[name="copy-filter"][value="none"]').checked = true;
     document.getElementById('tint-color').value = '#14b8a6';
     document.querySelector('input[name="nv-variant"][value="green"]').checked = true;
@@ -985,7 +985,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const params = new URLSearchParams(window.location.search);
     projectId = Number(params.get('id'));
-    document.getElementById('train-project-link').href = `/training?source=custom:${projectId}`;
     if (!projectId) {
         window.location.href = '/datasets';
         return;
@@ -1063,13 +1062,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             await reloadProject();
             selectImage(img.id);
         } catch (err) {
+            e.target.value = img.split;
             alert(err.message);
         }
     });
 
     document.getElementById('delete-image-btn').addEventListener('click', async () => {
         const img = currentImage();
-        if (!img || !confirm('Delete this image and its annotations?')) return;
+        if (!img || !await confirmAction('Delete this image and its annotations?')) return;
         try {
             await api(`/api/projects/${projectId}/images/${img.id}`, { method: 'DELETE' });
             currentImageId = null;
@@ -1141,7 +1141,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     document.getElementById('auto-split-btn').addEventListener('click', async () => {
-        if (!confirm('Randomly assign all unassigned images to train/valid/test (80/15/5)?')) return;
+        if (!await confirmAction('Randomly assign all unassigned images to train/valid/test (80/15/5)?')) return;
         try {
             const result = await api(`/api/projects/${projectId}/auto-split`, {
                 method: 'POST',
@@ -1154,9 +1154,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    document.getElementById('reshuffle-split-btn').addEventListener('click', async () => {
+        if (!await confirmAction('Replace all existing splits with a random 80/15/5 split? Copies stay together and augmented families stay in train. Existing training runs keep their snapshots.')) return;
+        try {
+            const result = await api(`/api/projects/${projectId}/auto-split`, {method: 'POST', body: JSON.stringify({onlyUnassigned: false})});
+            await reloadProject(); showToast(`Randomly assigned ${result.updated} images`, 'success');
+        } catch (error) { alert(error.message); }
+    });
+
     document.getElementById('export-project-btn').addEventListener('click', downloadYoloZip);
 
     document.addEventListener('keydown', (e) => {
+        if (document.querySelector('dialog[open]')) return;
         if (e.key === 'Escape' && !document.getElementById('copy-modal').hidden) {
             closeCopyModal();
             return;

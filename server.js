@@ -1,3 +1,4 @@
+import { imageFamilies, splitImageFamilies } from './lib/image-splits.js';
 import { trainingRouter } from './lib/training.js';
 import { audioDatasetsRouter } from './lib/audio-datasets.js';
 import { augmentImage, parseAugmentation } from './lib/augmentation.js';
@@ -628,7 +629,7 @@ app.post('/api/boxes', authenticateToken, async (req, res) => {
     const tileGrid = getTilesForBounds(bounds, zoomLevel);
     const { tiles, gridWidth, gridHeight } = tileGrid;
 
-    const boxId = db.data.boxes.length ? Math.max(...db.data.boxes.map((b) => b.id)) + 1 : 1;
+    const boxId = nextId([...db.data.boxes, ...(db.data.deletedBoxes || [])]);
 
     console.log(`📦 Box ${boxId} by ${req.user.email}: ${tiles.length} Tile(s)`);
 
@@ -676,28 +677,34 @@ app.post('/api/boxes', authenticateToken, async (req, res) => {
     res.status(201).json(newBox);
 });
 
+app.get('/api/boxes/trash', authenticateToken, async (req, res) => {
+    await db.read(); res.json(db.data.deletedBoxes || []);
+});
+
+app.post('/api/boxes/:id/restore', authenticateToken, async (req, res) => {
+    await db.read();
+    const id = Number(req.params.id);
+    const index = (db.data.deletedBoxes || []).findIndex(box => box.id === id);
+    if (index < 0) return res.status(404).json({error: 'Deleted image not found.'});
+    const box = db.data.deletedBoxes[index];
+    if (!db.data.labels.some(label => label.id === box.labelId)) return res.status(409).json({error: 'The original class no longer exists. Restore or recreate the class before restoring this image.'});
+    if (db.data.boxes.some(item => item.id === id)) return res.status(409).json({error: 'An image with this ID already exists.'});
+    delete box.deletedAt;
+    db.data.boxes.push(box); db.data.deletedBoxes.splice(index, 1);
+    await db.write(); emitToAll('box:created', box); res.json(box);
+});
+
 app.delete('/api/boxes/:id', authenticateToken, async (req, res) => {
     const id = Number(req.params.id);
     await db.read();
-
-    const index = db.data.boxes.findIndex(b => b.id === id);
-    if (index === -1) {
-        return res.status(404).json({ error: 'Box not found' });
-    }
-
-    const box = db.data.boxes[index];
-    if (box.image) {
-        const imagePath = path.join(__dirname, 'public', box.image);
-        try { await fs.unlink(imagePath); } catch (e) { /* ignore */ }
-    }
-
-    db.data.boxes.splice(index, 1);
+    const index = db.data.boxes.findIndex(box => box.id === id);
+    if (index < 0) return res.status(404).json({error: 'Box not found'});
+    const [box] = db.data.boxes.splice(index, 1);
+    db.data.deletedBoxes ||= [];
+    db.data.deletedBoxes.push({...box, deletedAt: new Date().toISOString()});
     await db.write();
-
-    // 🔴 Emit real-time event
-    emitToAll('box:deleted', { id, deletedBy: req.user.email });
-
-    res.json({ success: true });
+    emitToAll('box:deleted', {id, deletedBy: req.user.email});
+    res.json({success: true, recoverable: true});
 });
 
 // --- YOLO Export API (satellite map boxes) ---
@@ -990,7 +997,9 @@ app.patch('/api/projects/:projectId/images/:imageId', authenticateToken, async (
     const image = db.data.projectImages.find((img) => img.id === imageId && img.projectId === projectId);
     if (!image) return res.status(404).json({ error: 'Image not found' });
 
-    image.split = split;
+    const family = imageFamilies(db.data.projectImages.filter(img => img.projectId === projectId)).find(group => group.includes(image));
+    if (split !== 'train' && family.some(img => img.filter === 'augmentation')) return res.status(400).json({error: 'Originals with training augmentations must stay in train.'});
+    for (const member of family) member.split = split;
     const project = db.data.projects.find((p) => p.id === projectId);
     if (project) project.updatedAt = new Date().toISOString();
     await db.write();
@@ -1000,38 +1009,23 @@ app.patch('/api/projects/:projectId/images/:imageId', authenticateToken, async (
 
 app.post('/api/projects/:id/auto-split', authenticateToken, async (req, res) => {
     const projectId = Number(req.params.id);
-    const trainRatio = Math.min(1, Math.max(0, Number(req.body.trainRatio ?? 0.8)));
-    const validRatio = Math.min(1, Math.max(0, Number(req.body.validRatio ?? 0.15)));
+    const trainRatio = Number(req.body.trainRatio ?? 0.8);
+    const validRatio = Number(req.body.validRatio ?? 0.15);
     const onlyUnassigned = req.body.onlyUnassigned !== false;
 
     await db.read();
     const project = db.data.projects.find((p) => p.id === projectId);
     if (!project) return res.status(404).json({ error: 'Project not found' });
 
-    let images = db.data.projectImages.filter((img) => img.projectId === projectId);
-    if (onlyUnassigned) {
-        images = images.filter((img) => img.split === 'unassigned');
-    }
-
-    // Fisher-Yates shuffle
-    for (let i = images.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [images[i], images[j]] = [images[j], images[i]];
-    }
-
-    const trainEnd = Math.floor(images.length * trainRatio);
-    const validEnd = trainEnd + Math.floor(images.length * validRatio);
-
-    images.forEach((img, i) => {
-        if (i < trainEnd) img.split = 'train';
-        else if (i < validEnd) img.split = 'valid';
-        else img.split = 'test';
-    });
+    const images = db.data.projectImages.filter(img => img.projectId === projectId);
+    let result;
+    try { result = splitImageFamilies(images, {trainRatio, validRatio, onlyUnassigned}); }
+    catch (error) { return res.status(400).json({error: error.message}); }
 
     project.updatedAt = new Date().toISOString();
     await db.write();
 
-    res.json({ updated: images.length, stats: projectStats(projectId) });
+    res.json({ ...result, stats: projectStats(projectId) });
 });
 
 app.delete('/api/projects/:projectId/images/:imageId', authenticateToken, async (req, res) => {
@@ -1047,6 +1041,9 @@ app.delete('/api/projects/:projectId/images/:imageId', authenticateToken, async 
         await fs.unlink(path.join(__dirname, 'public', image.path.replace(/^\//, '')));
     } catch (e) { /* ignore */ }
 
+    const children = db.data.projectImages.filter(img => img.projectId === projectId && img.copiedFrom === imageId);
+    const replacement = image.copiedFrom ?? children[0]?.id;
+    for (const child of children) child.copiedFrom = child.id === replacement ? null : replacement;
     db.data.projectImages.splice(index, 1);
     db.data.projectAnnotations = db.data.projectAnnotations.filter((a) => a.imageId !== imageId);
 
@@ -1221,6 +1218,8 @@ app.post('/api/projects/:projectId/images/:imageId/copy', authenticateToken, asy
 
     const source = db.data.projectImages.find((img) => img.id === imageId && img.projectId === projectId);
     if (!source) return res.status(404).json({ error: 'Image not found' });
+
+    if (split !== source.split) return res.status(400).json({error: 'Copies must use the same split as their original. Change the original split first.'});
 
     if (filter === 'augmentation' && (source.split !== 'train' || split !== 'train')) {
         return res.status(400).json({ error: 'Training augmentation requires a training image and the train split. Assign the original to train first.' });
