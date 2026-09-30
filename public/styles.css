@@ -3082,3 +3082,29 @@ body.page-scroll {
 #audio-selection-preview { margin: 0 0 20px; padding: 12px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-dark); }
 #audio-selection-preview[hidden] { display: none; }
 #audio-selection-preview h3 { font-size: 14px; }
+
+/* Local YOLO training */
+body.training-page { overflow: auto; height: auto; min-height: 100vh; }
+.training-main { max-width: 1440px; margin: 24px auto; padding: 0 24px 40px; }
+.training-grid { display: grid; grid-template-columns: minmax(300px, 390px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.training-panel { min-width: 0; padding: 22px; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-panel); }
+.training-panel h2 { margin-bottom: 14px; }
+.training-panel p { margin: 12px 0; color: var(--text-secondary); }
+.training-panel label { display: grid; gap: 6px; font-size: 13px; color: var(--text-secondary); }
+.training-panel input, .training-panel select { width: 100%; box-sizing: border-box; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); padding: 10px; border-radius: var(--radius-sm); }
+.training-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 16px 0; }
+.training-panel button:disabled { opacity: .45; cursor: not-allowed; }
+.training-runs { display: grid; gap: 8px; margin-top: 14px; max-height: 420px; overflow: auto; }
+#training-form { margin-bottom: 30px; }
+#training-progress { width: 100%; accent-color: var(--accent-primary); }
+.training-metrics { display: grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap: 12px; margin: 20px 0; }
+.training-metrics div { padding: 10px; background: var(--bg-dark); border-radius: var(--radius-sm); overflow-wrap: anywhere; }
+.training-metrics span { display: block; color: var(--text-secondary); font-size: 11px; }
+.training-metrics strong { display: block; margin-top: 5px; font-family: var(--font-mono); }
+#training-chart { width: 100%; height: 200px; }
+.training-log { height: 260px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg-dark); padding: 12px; font-size: 11px; margin-top: 12px; }
+#training-results img { width: 100%; margin-top: 12px; }
+.training-camera { margin-top: 24px; }
+#camera-output { display: block; max-width: 100%; height: auto; margin-top: 16px; border-radius: var(--radius-md); }
+#camera-output[hidden] { display: none; }
+@media(max-width: 850px) { .training-grid { grid-template-columns: 1fr; } .training-main { padding: 0 12px 24px; } }

@@ -407,3 +407,59 @@ IDs in paths prevent collisions. Unassigned data stays outside the training spli
 Overlapping labels are included in clip-local annotations for multilabel training;
 class folders indicate the primary label. Unlabeled time is not a confirmed negative.
 The legacy metadata-only JSON is available at `/api/audio-projects/:id/export/annotations`.
+
+### In-app YOLO training and webcam preview
+
+Open **Satellite → Training**, **Custom → Training**, or **Train YOLO model** inside
+an image dataset. This trains object detectors on satellite/custom image datasets.
+Audio annotations use a different task and are not included in this training view.
+
+Install a Python 3.11 environment once on the Aeronir server:
+
+```sh
+python3.11 -m venv .venv-yolo
+.venv-yolo/bin/python -m pip install -r training/requirements.txt
+```
+
+Aeronir uses `.venv-yolo/bin/python` by default. Set `YOLO_PYTHON` to an absolute
+Python executable path to use another environment (including Windows). The UI
+checks Ultralytics and available CPU/MPS/CUDA devices before enabling training.
+Model weights download on first use; the initial run therefore requires internet.
+The installed Ultralytics version is pinned in `training/requirements.txt`.
+
+- Choose YOLO12n/s/m, YOLO11n/s, or YOLOv8n/s, epochs, image size, batch size,
+  device, early stopping patience, and seed. Auto prefers CUDA, then MPS, then CPU.
+  Image size must be divisible by 32. Batch size 4 is a conservative starting point.
+- Custom datasets keep their assigned train/valid/test splits. Unassigned images
+  are excluded. Train and validation must each contain labeled objects. Copies
+  of an original image must share a split, preventing obvious data leakage.
+- Satellite crops sharing map tiles are grouped before a deterministic ~80/15/5
+  split. At least two independent areas are needed; very small datasets have no
+  test split. Nearby areas can still be visually correlated: collect geographically
+  distinct validation/test examples for meaningful quality measurements.
+- Each run snapshots images and annotations to `training_runs/<id>/dataset`.
+  PNG conversion preserves image geometry. Existing labels are never rewritten.
+- One run trains at a time. Live logs and per-epoch loss/precision/recall/mAP metrics
+  are polled every two seconds. Training continues when the page is closed.
+  **Stop training** cancels the process. Server restarts mark unfinished runs as
+  interrupted; completed runs and their settings remain available.
+- A completed run exposes `best.pt`, training plots and a metrics CSV. `best.pt`
+  is selected using validation performance; the test split is reserved for later
+  independent evaluation and is not used for fitting or model selection.
+- **Start webcam** requests the browser camera and sends one JPEG at a time to
+  the same authenticated Aeronir server. Frames are processed in memory and are
+  not saved. Boxes and confidence scores are overlaid on the corresponding frame.
+  The current implementation uses CPU inference; throughput depends on the model
+  and hardware. Stop webcam releases the camera. Browser camera access requires
+  localhost or HTTPS. Remote HTTP hosting cannot request a camera.
+
+Runtime files and weights are gitignored. Python training/inference workers are
+launched with fixed argument lists, and model choices and settings are validated.
+For Ultralytics usage and license terms, see the
+[Ultralytics training documentation](https://docs.ultralytics.com/modes/train/)
+and [license information](https://www.ultralytics.com/license).
+
+Tests: `node --test test/*.test.js`. For an explicit real training smoke test:
+`node training/smoke.mjs`. This downloads YOLO12n weights, trains one epoch on four
+synthetic images, checks live metrics and best.pt, runs checkpoint inference, and
+removes its temporary dataset and outputs. It verifies integration, not accuracy.

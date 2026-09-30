@@ -1,3 +1,4 @@
+import { trainingRouter } from './lib/training.js';
 import { audioDatasetsRouter } from './lib/audio-datasets.js';
 import { augmentImage, parseAugmentation } from './lib/augmentation.js';
 import bcrypt from 'bcryptjs';
@@ -1540,6 +1541,11 @@ app.get('/audio-dataset', (req, res) => res.sendFile(path.join(__dirname, 'publi
 app.get('/audio-datasets', (req, res) => res.sendFile(path.join(__dirname, 'public', 'audio-datasets.html')));
 app.get('/datasets', (req, res) => res.sendFile(path.join(__dirname, 'public', 'datasets.html')));
 app.get('/dataset', (req, res) => res.sendFile(path.join(__dirname, 'public', 'dataset.html')));
+
+const trainingApi = await trainingRouter({db,root:__dirname});
+app.use('/api/training', authenticateToken, trainingApi);
+for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => { trainingApi.shutdown(); httpServer.close(); process.exit(0); });
+app.get('/training', (req,res)=>res.sendFile(path.join(__dirname,'public','training.html')));
 
 // --- Static Files ---
 app.use(express.static(path.join(__dirname, 'public')));

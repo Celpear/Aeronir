@@ -41,3 +41,9 @@ coverage/
 
 # Audio dataset uploads
 audio_files/
+
+# Local YOLO runtime, dataset snapshots and trained weights
+.venv-yolo/
+training_runs/
+__pycache__/
+*.pyc

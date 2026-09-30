@@ -985,6 +985,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const params = new URLSearchParams(window.location.search);
     projectId = Number(params.get('id'));
+    document.getElementById('train-project-link').href = `/training?source=custom:${projectId}`;
     if (!projectId) {
         window.location.href = '/datasets';
         return;
