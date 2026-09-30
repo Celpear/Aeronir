@@ -1,3 +1,4 @@
+import { audioDatasetsRouter } from './lib/audio-datasets.js';
 import { augmentImage, parseAugmentation } from './lib/augmentation.js';
 import bcrypt from 'bcryptjs';
 import cookieParser from 'cookie-parser';
@@ -1534,6 +1535,9 @@ app.get('/db', (req, res) => res.sendFile(path.join(__dirname, 'public', 'db.htm
 app.get('/export', (req, res) => res.sendFile(path.join(__dirname, 'public', 'export.html')));
 app.get('/view', (req, res) => res.sendFile(path.join(__dirname, 'public', 'view.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+app.use('/api/audio-projects', authenticateToken, audioDatasetsRouter({ db, directory: path.join(__dirname, 'audio_files') }));
+app.get('/audio-dataset', (req, res) => res.sendFile(path.join(__dirname, 'public', 'audio-dataset.html')));
+app.get('/audio-datasets', (req, res) => res.sendFile(path.join(__dirname, 'public', 'audio-datasets.html')));
 app.get('/datasets', (req, res) => res.sendFile(path.join(__dirname, 'public', 'datasets.html')));
 app.get('/dataset', (req, res) => res.sendFile(path.join(__dirname, 'public', 'dataset.html')));
 

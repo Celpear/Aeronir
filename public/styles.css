@@ -3022,3 +3022,63 @@ body.page-scroll {
 .augmentation-slider input { grid-column: 1 / -1; width: 100%; accent-color: var(--accent-primary); }
 .augmentation-slider output { color: var(--text-primary); font-family: var(--font-mono); }
 #augmentation-controls small, #augmentation-status { color: var(--text-secondary); font-size: 12px; }
+
+/* Audio datasets */
+#audio-page { max-width: 1500px; margin: 0 auto; padding: 24px; }
+#audio-status { color: var(--accent-secondary); min-height: 24px; margin-bottom: 12px; overflow-wrap: anywhere; }
+.audio-project-bar { display: flex; align-items: end; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+.audio-project-bar > .form-group { min-width: 250px; flex: 1; }
+.audio-inline { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.audio-inline input:not([type=range]) { min-width: 0; flex: 1; padding: 10px; background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font: inherit; }
+#audio-editor { display: grid; grid-template-columns: 300px minmax(0,1fr); gap: 24px; }
+#audio-editor[hidden], #audio-track-editor[hidden], #audio-export[hidden], .create-project-card[hidden] { display: none; }
+.audio-sidebar, .audio-workspace { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 20px; min-width: 0; }
+.audio-sidebar h2, .audio-workspace h2 { font-size: 18px; margin-bottom: 12px; overflow-wrap: anywhere; }
+.audio-upload { display: block; padding: 16px; border: 1px dashed var(--accent-primary); border-radius: var(--radius-md); cursor: pointer; margin-bottom: 8px; }
+.audio-upload input { display: block; width: 100%; margin-top: 12px; }
+.audio-sidebar small { color: var(--text-secondary); }
+#audio-tracks { margin: 16px 0 24px; display: grid; gap: 8px; max-height: 400px; overflow-y: auto; }
+.audio-track { display: grid; gap: 5px; width: 100%; text-align: left; padding: 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-dark); color: var(--text-primary); cursor: pointer; font: inherit; overflow-wrap: anywhere; }
+.audio-track.active { border-color: var(--accent-primary); background: #14b8a611; }
+#audio-classes { color: var(--text-secondary); margin-top: 12px; overflow-wrap: anywhere; }
+#audio-player { display: block; width: 100%; margin: 16px 0; color-scheme: dark; }
+#audio-wave-scroll { overflow-x: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md); margin: 16px 0; }
+#audio-wave { display: block; height: 180px; touch-action: none; cursor: crosshair; }
+.audio-segment-fields { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin-bottom: 12px; }
+#audio-segment-form { margin-bottom: 24px; }
+#audio-segments { display: grid; gap: 8px; margin-top: 12px; }
+.audio-segment { display: flex; gap: 12px; align-items: center; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px; }
+.audio-segment-select { flex: 1; display: flex; flex-wrap: wrap; gap: 12px; text-align: left; background: none; border: 0; color: var(--text-primary); font: inherit; cursor: pointer; }
+.audio-segment-select span { color: var(--text-secondary); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+@media (max-width: 900px) { #audio-editor { grid-template-columns: 1fr; } #audio-page { padding: 16px; } }
+@media (max-width: 480px) { .audio-segment-fields { grid-template-columns: 1fr; } }
+
+.audio-playback { display: flex; align-items: center; gap: 10px; margin: 16px 0; }
+#audio-seek { flex: 1; min-width: 60px; accent-color: var(--accent-primary); }
+.audio-upload:focus-within { outline: 2px solid var(--accent-primary); outline-offset: 3px; }
+.audio-upload input.sr-only { width: 1px; margin: -1px; }
+
+.audio-segment { display: block; }
+.audio-segment-header { display: flex; gap: 12px; align-items: center; }
+.segment-spectrum { margin: 12px 0 0; width: 100%; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: var(--radius-sm); overflow: hidden; }
+.segment-spectrum canvas { display: block; width: 100%; height: 200px; }
+.spectrum-toggle { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 10px; }
+.spectrum-toggle button { border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 5px 12px; background: transparent; color: var(--text-secondary); font: inherit; font-size: 12px; cursor: pointer; }
+.spectrum-toggle button[aria-pressed="true"] { background: var(--accent-primary); border-color: var(--accent-primary); color: #042f2e; }
+.spectrum-toggle button:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.segment-spectrum figcaption { padding: 4px 10px 8px; font-size: 10px; color: var(--text-secondary); }
+.spectrogram-toolbar { justify-content: flex-end; }
+.spectrogram-toolbar h3 { margin-right: auto; }
+.spectrogram-toolbar label { font-size: 12px; color: var(--text-secondary); }
+#audio-page > .back-link { display: inline-block; margin-bottom: 16px; }
+#audio-project-stats { color: var(--text-secondary); }
+.audio-track-navigation { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+#audio-track-position { color: var(--text-secondary); font-family: var(--font-mono); }
+#audio-auto-split { width: 100%; margin: 16px 0 12px; }
+#audio-split-counts { flex-wrap: wrap; margin-bottom: 16px; }
+.audio-track small { line-height: 2; }
+#audio-classes { margin-bottom: 24px; }
+#audio-selection-preview { margin: 0 0 20px; padding: 12px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-dark); }
+#audio-selection-preview[hidden] { display: none; }
+#audio-selection-preview h3 { font-size: 14px; }

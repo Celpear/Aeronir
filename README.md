@@ -304,3 +304,106 @@ These presets simulate image degradation, not physically accurate night vision o
 thermal imaging. Existing copies keep their original settings and are not regenerated.
 
 Run processing tests: `node --test test/augmentation.test.js`
+
+
+### Audio datasets
+
+Open **Custom → Audio Datasets**. The overview uses the same project cards as image
+datasets, with descriptions, track/class/segment counts and train/valid/test totals.
+Create a project and open its card to enter the audio editor.
+
+- Upload WAV or MP3 files (100 MB and one hour maximum per track). Multiple selected
+  files upload sequentially; invalid files are reported individually.
+- Play tracks, zoom and drag across the waveform, or enter exact start/end seconds.
+- Add classes, save overlapping labeled segments, edit boundaries, delete labels
+  from a track, and play only the selected segment.
+- Assign the whole track to a train/valid/test split. **Export dataset (ZIP)** includes
+  labeled clips, unchanged originals, and JSON annotations linking clips to source times.
+  Clips are mono 48 kHz PCM 16-bit WAV; their split always matches the source track.
+  Saved class names appear inside waveform regions when enough space is visible.
+- Each saved segment and the selection preview use a full-width analysis diagram.
+  Switch independently between FFT, STFT (default), Mel, Log-Mel, MFCC, CQT,
+  and Welch PSD. All previews analyze channel 1 within the selected interval.
+  - FFT: mean power from up to 256 distributed 4096-point Hann windows, relative dB.
+  - STFT: 1024-point periodic Hann windows, 192 distributed frames, 64 linear
+    frequency rows, −80…0 dB relative to the selection peak.
+  - Mel: 64 HTK triangular filters, linear power normalized to the selection peak.
+  - Log-Mel: the same Mel power converted to relative dB (−80…0 dB).
+  - MFCC: 13 signed coefficients (C0–C12) from an orthonormal DCT-II of 64
+    log-Mel powers (reference 1, floor 1e-10). A blue/orange diverging palette
+    shows negative/positive values. C0 and C1–C12 use separate symmetric color
+    scales, stated in the caption; values are unchanged and C0 retains energy.
+  - CQT: direct variable-length Hann kernels, 12 bins/octave from C2 (65.4 Hz)
+    to below Nyquist, 128 distributed time frames, relative dB.
+  - Welch PSD: one-sided power density with constant detrending, up to 4096
+    samples/window, periodic Hann and 50% overlap. The unit is dB relative to
+    1 digital-amplitude²/Hz, not calibrated sound pressure. For long selections,
+    at most 512 regular windows are sampled uniformly; the caption reports this.
+  Previews use bounded computation and are not exported training features. The
+  worker calculates visible previews and caches them for the current track.
+
+Definitions: [Welch density](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.welch.html),
+[MFCC](https://librosa.org/doc/0.11.0/generated/librosa.feature.mfcc.html),
+[CQT](https://librosa.org/doc/0.11.0/generated/librosa.cqt.html).
+The browser implementations use the explicit parameters above; they do not claim
+bit-for-bit compatibility with default library settings.
+
+Audio originals live in `audio_files/` (gitignored), metadata and labels in `db.json`.
+The browser must support decoding the uploaded WAV codec or MP3 for waveform and
+spectrogram previews. Existing audio projects remain available in the card overview.
+
+Tests: `node --test test/*.test.js` (audio API tests start a temporary local server).
+The MP3 test fixture is a generated two-second 440 Hz tone.
+
+#### Audio labeling workflow
+
+- Classes appear above the track list. Selecting a range shows its STFT/Mel preview
+  immediately, including before saving. **Play selection** plays only that range;
+  each saved segment also has a **Play** button that stops at its end.
+- **Delete track** removes the audio file and all its labeled segments after confirmation.
+- Use **Prev / Next** (or Left / Right arrows outside form controls) to step through
+  tracks within the active filter. **Save & next track** saves the current segment
+  before opening the next track. **Save segment** supports multiple labels per track.
+- Filter tracks by All, Unassigned, Train, Validation, Test or Unlabeled. Track and
+  filter selection are remembered locally for the next visit.
+- Choose a split before uploading or change **Track split** later. Split badges and
+  totals update immediately. All segments inherit their track's split in the export.
+- **Auto-split unassigned 80/15/5** shuffles only unassigned tracks and assigns whole
+  tracks to train/valid/test. Existing assignments stay unchanged. Counts are rounded
+  to whole tracks, so small datasets may not contain every split.
+
+#### Audio ZIP export
+
+The server needs `ffmpeg` and `zip` on PATH (`unzip` is also required by export tests).
+No browser audio conversion is used for exports. ZIPs are assembled in a temporary
+folder and removed after download or failure.
+
+```text
+annotations.json
+README.md
+manifests/
+  train.json
+  validation.json
+  test.json
+  unassigned.json
+segments/
+  train/<class-name>__<class-id>/<track-id>__<segment-id>.wav
+  validation/...
+  test/...
+  unassigned/...
+originals/
+  train/<track-id>.wav or .mp3
+  validation/...
+  test/...
+  unassigned/...
+```
+
+Use training clips for fitting, validation clips for tuning, and test clips for
+held-out evaluation. For temporal verification, run the model on `originals/test`
+and compare detections with `tracks[].segments` in `annotations.json`.
+Each clip includes its original path, track ID, class, and source start/end times.
+All paths are relative to the ZIP root. Original filenames are retained in JSON;
+IDs in paths prevent collisions. Unassigned data stays outside the training splits.
+Overlapping labels are included in clip-local annotations for multilabel training;
+class folders indicate the primary label. Unlabeled time is not a confirmed negative.
+The legacy metadata-only JSON is available at `/api/audio-projects/:id/export/annotations`.

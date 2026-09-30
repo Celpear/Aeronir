@@ -6,6 +6,7 @@ node_modules/
 db.json
 db.json.tmp
 db.json.bak
+llm_todo.md
 
 # Saved tile images
 public/saved_tiles/
@@ -37,3 +38,6 @@ coverage/
 .env.*
 !.env.example
 !.env.*.example
+
+# Audio dataset uploads
+audio_files/

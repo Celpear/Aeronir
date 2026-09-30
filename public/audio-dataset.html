@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#14b8a6" />
+    <title>Audio Datasets - Aeronir</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body class="page-scroll">
+    <div id="topbar">
+        <div class="logo">
+            <img src="/icons/icon-32.png" alt="Aeronir" class="logo-img" />
+            <span class="logo-text">Aeronir</span>
+        </div>
+        <nav class="nav-links" aria-label="App section">
+            <a href="/" class="toplink">Satellite</a>
+            <a href="/datasets" class="toplink active" aria-current="page">Custom</a>
+            <div class="nav-group nav-group-admin">
+                <a href="/db" class="toplink" id="db-link" style="display:none">Database</a>
+                <a href="/admin" class="toplink" id="admin-link" style="display:none">Users</a>
+            </div>
+        </nav>
+        <div id="user-info" class="user-info"></div>
+    </div>
+    <nav class="sub-appbar" aria-label="Custom Navigation">
+        <a href="/datasets" class="toplink">Image Datasets</a>
+        <a href="/audio-datasets" class="toplink active" aria-current="page">Audio Datasets</a>
+    </nav>
+
+    <main id="audio-page">
+        <a class="back-link" href="/audio-datasets">← Audio Datasets</a>
+        <header class="datasets-hero"><div><h1 id="audio-project-title">Audio Dataset</h1><p id="audio-project-description"></p><small id="audio-project-stats"></small></div><a id="audio-export" class="export-btn" hidden>Export dataset (ZIP)</a></header>
+        <p id="audio-status" role="status" aria-live="polite"></p>
+        <section id="audio-editor" hidden>
+            <aside class="audio-sidebar">
+                <h2>Upload tracks</h2>
+                <div class="form-group"><label for="audio-upload-split">Assign uploads to split</label><select id="audio-upload-split"><option value="unassigned">Unassigned (label first)</option><option>train</option><option>valid</option><option>test</option></select></div>
+                <label id="audio-dropzone" class="audio-upload" for="audio-upload">Drop WAV / MP3 files here or choose files<input id="audio-upload" class="sr-only" type="file" accept=".wav,.mp3,audio/wav,audio/mpeg" multiple /></label>
+                <small>Up to 100 MB and one hour per track. Files upload one at a time.</small>
+                <button id="audio-auto-split" class="export-btn" type="button">Auto-split unassigned 80/15/5</button>
+                <div id="audio-split-counts" class="project-splits" aria-label="Track split counts"></div>
+                <h2>Classes</h2>
+                <form id="audio-add-class" class="audio-inline"><label class="sr-only" for="audio-class-name">New class name</label><input id="audio-class-name" required maxlength="80" placeholder="e.g. speech, dog bark" /><button class="export-btn">Add</button></form>
+                <div id="audio-classes"></div>
+                <div class="form-group"><label for="audio-track-filter">Tracks</label><select id="audio-track-filter"><option value="all">All tracks</option><option value="unassigned">Unassigned</option><option value="train">Train</option><option value="valid">Validation</option><option value="test">Test</option><option value="unlabeled">Unlabeled</option></select></div>
+                <div id="audio-tracks"></div>
+            </aside>
+            <section class="audio-workspace">
+                <div class="audio-track-navigation" aria-label="Track navigation"><button id="audio-prev" class="export-btn" type="button" title="Previous track (Left arrow)">← Prev</button><span id="audio-track-position" aria-live="polite">0 / 0</span><button id="audio-next" class="export-btn" type="button" title="Next track (Right arrow)">Next →</button></div>
+                <div class="audio-inline"><h2 id="audio-track-title">Choose or upload a track</h2><button id="audio-delete-track" class="danger-btn" type="button" disabled>Delete track</button></div>
+                <div id="audio-track-editor" hidden>
+                    <audio id="audio-player" preload="metadata"></audio>
+                    <div class="audio-playback"><button id="audio-play" class="export-btn primary" type="button">Play track</button><button id="audio-stop" class="export-btn" type="button">Stop</button><label class="sr-only" for="audio-seek">Playback position</label><input id="audio-seek" type="range" min="0" max="1" step="0.01" value="0" /></div>
+                    <div class="audio-inline">
+                        <div class="form-group"><label for="audio-split">Track split</label><select id="audio-split"><option value="unassigned">Unassigned</option><option>train</option><option>valid</option><option>test</option></select></div>
+                        <label for="audio-zoom">Zoom</label><input id="audio-zoom" type="range" min="1" max="20" value="1" />
+                        <span id="audio-time"></span>
+                    </div>
+                    <p class="hint">Drag on the waveform to select a segment. Zoom in for precise boundaries, or enter start and end times below.</p>
+                    <div id="audio-wave-scroll"><canvas id="audio-wave" height="180" aria-label="Audio waveform. Use the start and end fields below as a keyboard alternative."></canvas></div>
+                    <section id="audio-selection-preview" hidden aria-labelledby="audio-selection-preview-title">
+                        <div class="audio-inline spectrogram-toolbar"><h3 id="audio-selection-preview-title">Selection preview</h3><button id="audio-preview-play" class="export-btn primary" type="button">▶ Play selection</button></div>
+                        <figure class="segment-spectrum"><div class="spectrum-toggle" role="group" aria-label="Selection audio analysis view"><button type="button" data-spectrum-mode="fft" aria-pressed="false">FFT</button><button type="button" data-spectrum-mode="stft" aria-pressed="true">STFT</button><button type="button" data-spectrum-mode="mel" aria-pressed="false">Mel</button><button type="button" data-spectrum-mode="logmel" aria-pressed="false">Log-Mel</button><button type="button" data-spectrum-mode="mfcc" aria-pressed="false">MFCC</button><button type="button" data-spectrum-mode="cqt" aria-pressed="false">CQT</button><button type="button" data-spectrum-mode="psd" aria-pressed="false">Welch PSD</button></div><canvas id="audio-selection-spectrum" width="340" height="200" role="img" aria-label="Spectrogram of the selected audio range"></canvas><figcaption role="status" aria-live="polite"></figcaption></figure>
+                    </section>
+                    <form id="audio-segment-form">
+                        <div class="audio-segment-fields">
+                            <div class="form-group"><label for="audio-start">Start (seconds)</label><input id="audio-start" type="number" min="0" step="0.001" value="0" required /></div>
+                            <div class="form-group"><label for="audio-end">End (seconds)</label><input id="audio-end" type="number" min="0" step="0.001" value="1" required /></div>
+                            <div class="form-group"><label for="audio-label">Class</label><select id="audio-label" required></select></div>
+                        </div>
+                        <div class="audio-inline"><button type="button" id="audio-play-selection" class="export-btn">Play selection</button><button id="audio-save-segment" class="export-btn primary">Save segment</button><button id="audio-save-next" class="export-btn primary" type="submit">Save &amp; next track →</button><button type="button" id="audio-new-segment" class="export-btn">New segment</button></div>
+                    </form>
+                    <h3>Labeled segments</h3>
+                    <div id="audio-segments"></div>
+                </div>
+            </section>
+        </section>
+    </main>
+    <script src="/auth.js"></script>
+    <script type="module" src="/audio-datasets.js"></script>
+</body>
+</html>

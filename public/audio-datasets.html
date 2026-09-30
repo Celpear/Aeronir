@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#14b8a6" />
-    <title>Datasets - Aeronir</title>
+    <title>Audio Datasets - Aeronir</title>
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
@@ -34,15 +34,15 @@
         <div id="user-info" class="user-info"></div>
     </div>
     <nav class="sub-appbar" aria-label="Custom Navigation">
-        <a href="/datasets" class="toplink active" aria-current="page">Image Datasets</a>
-        <a href="/audio-datasets" class="toplink">Audio Datasets</a>
+        <a href="/datasets" class="toplink">Image Datasets</a>
+        <a href="/audio-datasets" class="toplink active" aria-current="page">Audio Datasets</a>
     </nav>
 
     <div id="datasets-page">
         <header class="datasets-hero">
             <div>
-                <h1>Custom Datasets</h1>
-                <p>Own images, project-based labeling, train/valid/test splits — separate from satellite map labeling.</p>
+                <h1>Audio Datasets</h1>
+                <p>WAV and MP3 tracks, labeled time segments, and train/valid/test splits.</p>
             </div>
             <button id="create-project-btn" class="export-btn primary">+ New Project</button>
         </header>
@@ -50,11 +50,11 @@
         <form id="create-project-form" class="create-project-card" hidden>
             <div class="form-group">
                 <label for="project-name">Project name</label>
-                <input id="project-name" type="text" maxlength="80" placeholder="e.g. drones-cars-v1" required />
+                <input id="project-name" type="text" maxlength="80" placeholder="e.g. speech-and-sounds" required />
             </div>
             <div class="form-group">
                 <label for="project-description">Description (optional)</label>
-                <input id="project-description" type="text" maxlength="200" placeholder="What should this model detect?" />
+                <input id="project-description" type="text" maxlength="200" placeholder="Which sounds should this dataset contain?" />
             </div>
             <div class="create-project-actions">
                 <button type="submit" class="export-btn primary">Create</button>
@@ -68,7 +68,7 @@
     </div>
 
     <script src="/auth.js"></script>
-    <script src="/datasets.js"></script>
+    <script src="/audio-projects.js"></script>
 </body>
 
 </html>
